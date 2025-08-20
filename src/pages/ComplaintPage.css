@@ -1,0 +1,129 @@
+/* Complaint Page Styles */
+.complaint-page {
+  padding: 2rem 1rem;
+  min-height: calc(100vh - 64px);
+  background-color: #f7fafc;
+}
+
+.complaint-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.back-button {
+  
+    margin-bottom: 20px;
+    margin-left: 10px;
+    padding: 8px 16px;
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.back-button:hover {
+  color: #3a5bd9;
+
+}
+
+h1 {
+  color: #2d3748;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.page-description {
+  color: #4a5568;
+  margin: 0 auto 2.5rem;
+  line-height: 1.6;
+  font-size: 1.05rem;
+  max-width: 700px;
+  text-align: center;
+}
+
+/* Success Message */
+.complaint-success {
+  max-width: 650px;
+  margin: 2rem auto;
+  text-align: center;
+  padding: 3rem 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.complaint-success h2 {
+  color: #38a169;
+  margin-bottom: 1.5rem;
+  font-size: 1.75rem;
+}
+
+.complaint-success p {
+  color: #4a5568;
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.complaint-success strong {
+  color: #2d3748;
+  font-weight: 600;
+  background-color: #f0fff4;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 1.2rem;
+}
+
+.success-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.success-actions .btn-primary,
+.success-actions .btn-secondary {
+  min-width: 180px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .complaint-page {
+    padding: 1rem;
+  }
+  
+  .complaint-container {
+    padding: 1.5rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  .page-description {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .success-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .success-actions .btn-primary,
+  .success-actions .btn-secondary {
+    width: 100%;
+  }
+}
