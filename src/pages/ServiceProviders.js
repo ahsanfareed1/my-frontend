@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import serviceProviders from '../data/serviceProviders';
+// backend se providers lane k liye
 import './ServiceProviders.css';
+import BusinessAvatar from '../components/BusinessAvatar';
 
 const ServiceProviders = () => {
   const { serviceId } = useParams();
@@ -16,7 +17,7 @@ const ServiceProviders = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  // Update filtered providers when search term or providers change
+  // search term ya providers change hon to filtered list update krne k liye
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setFilteredProviders(providers);
@@ -28,12 +29,12 @@ const ServiceProviders = () => {
     }
   }, [searchTerm, providers]);
 
-  // Initialize filtered providers when providers are loaded
+  // providers load hone pe initial filtered set krne k liye
   useEffect(() => {
     setFilteredProviders(providers);
   }, [providers]);
 
-  // Get service title based on ID
+  // id se service title nikalne k liye
   const getServiceTitle = (id) => {
     const serviceTitles = {
       1: "Plumbing Services",
@@ -52,53 +53,67 @@ const ServiceProviders = () => {
     return serviceTitles[id] || 'Service Providers';
   };
 
-  // Set the service title based on the serviceId
+  // serviceId change pe title set krne k liye
   useEffect(() => {
     setServiceTitle(getServiceTitle(parseInt(serviceId)));
   }, [serviceId]);
 
-  // Fetch providers from the imported data
+  // backend se providers lana
   useEffect(() => {
-    const fetchProviders = () => {
-      // Use the imported serviceProviders data
-      const mockServiceProviders = serviceProviders[serviceId] || [];
-      
-      // Get registered providers from localStorage
+    const controller = new AbortController();
+    const fetchProviders = async () => {
       try {
-        const registeredProviders = JSON.parse(localStorage.getItem('serviceProviders') || '[]');
-        
-        // Filter providers for the current service category
-        const filteredRegisteredProviders = registeredProviders.filter(
-          provider => parseInt(provider.serviceCategory) === parseInt(serviceId)
-        );
-        
-        // Combine and deduplicate providers by ID
-        const combinedProviders = [
-          ...mockServiceProviders,
-          ...filteredRegisteredProviders.filter(
-            registered => !mockServiceProviders.some(mock => mock.id === registered.id)
-          )
-        ];
-        
-        console.log('Combined providers:', combinedProviders);
-        setProviders(combinedProviders);
-      } catch (error) {
-        console.error('Error loading registered providers:', error);
-        setProviders(mockServiceProviders);
+        setLoading(true);
+        // serviceId ko businessType me map krne k liye
+        const serviceIdToType = {
+          1: 'plumbing',
+          2: 'electrical',
+          3: 'food',
+          4: 'cleaning',
+          5: 'transport',
+          6: 'maintenance',
+          7: 'gardening',
+          8: 'pest',
+          9: 'security', // locksmith close to security
+          10: 'transport',
+          11: 'food',
+          12: 'health'
+        };
+        const businessType = serviceIdToType[parseInt(serviceId)] || '';
+        const params = new URLSearchParams({ status: 'active', limit: '100' });
+        if (businessType) params.set('businessType', businessType);
+        const res = await fetch(`http://localhost:5000/api/business?${params.toString()}`, { signal: controller.signal });
+        if (!res.ok) throw new Error('Failed to load providers');
+        const data = await res.json();
+        const apiProviders = (data.businesses || []).map(b => ({
+          id: b._id,
+          name: b.businessName,
+          location: b.location?.city || 'N/A',
+          rating: b.rating?.average || 0,
+          views: b.rating?.totalReviews || 0,
+          experience: b.createdAt ? '' : '',
+          profilePicture: b.images?.logo,
+          image: b.images?.logo
+        }));
+        setProviders(apiProviders);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setProviders([]);
+        }
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
-    
     fetchProviders();
+    return () => controller.abort();
   }, [serviceId, location.state]);
 
   const handleProviderClick = (provider, e) => {
-    // Prevent navigation if the click was on a button or link inside the card
+    // agr button/link pe click ho to navigation na ho
     if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'A' || e.target.closest('a')) {
       return;
     }
-    // Navigate to provider profile with both serviceId and providerId
+    // provider profile pe navigate krne k liye
     navigate(`/provider/${serviceId}/${provider.id}`);
   };
 
@@ -189,15 +204,11 @@ const ServiceProviders = () => {
           >
             <div className="provider-image-container">
               <div className="image-container">
-                <img 
-                  src={provider.profilePicture || provider.image || 'https://placehold.co/150x150?text=No+Image'} 
-                  alt={provider.name} 
+                <BusinessAvatar
+                  businessName={provider.name}
+                  imageUrl={provider.profilePicture || provider.image}
+                  size="large"
                   className="profile-image hover-zoom"
-                  onError={(e) => {
-                    // Fallback to a placeholder if the image fails to load
-                    e.target.onerror = null;
-                    e.target.src = 'https://placehold.co/150x150?text=No+Image';
-                  }}
                 />
               </div>
             </div>
@@ -245,8 +256,16 @@ const ServiceProviders = () => {
                     justifyContent: 'center',
                     gap: '8px'
                   }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3a5bd9'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4a6cf7'}
+                  onMouseOver={(e) => {
+                    if (e.currentTarget) {
+                      e.currentTarget.style.backgroundColor = '#3a5bd9';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (e.currentTarget) {
+                      e.currentTarget.style.backgroundColor = '#4a6cf7';
+                    }
+                  }}
                 >
                   <i className="fas fa-question-circle"></i>
                   Ask Question
@@ -274,12 +293,16 @@ const ServiceProviders = () => {
                     gap: '8px'
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8f9ff';
-                    e.currentTarget.style.color = '#3a5bd9';
+                    if (e.currentTarget) {
+                      e.currentTarget.style.backgroundColor = '#f8f9ff';
+                      e.currentTarget.style.color = '#3a5bd9';
+                    }
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                    e.currentTarget.style.color = '#4a6cf7';
+                    if (e.currentTarget) {
+                      e.currentTarget.style.backgroundColor = 'white';
+                      e.currentTarget.style.color = '#4a6cf7';
+                    }
                   }}
                 >
                   <i className="fas fa-user"></i>

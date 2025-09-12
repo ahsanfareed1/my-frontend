@@ -1,372 +1,349 @@
-import React, { useState, useEffect } from 'react';
-import { FaSearch, FaStar } from 'react-icons/fa';
-import serviceProviders from '../data/serviceProviders';
+import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
+import { FaExclamationTriangle, FaCheckCircle, FaTimes, FaSpinner, FaRegUser } from 'react-icons/fa';
+import { AuthContext } from '../context/AuthContext';
 import './ComplaintForm.css';
 
-const serviceCategories = {
-  1: 'Plumbing Services',
-  2: 'Electrical Work',
-  3: 'Food Catering',
-  4: 'Home Painting',
-  5: 'Transport Services',
-  6: 'Home Cleaning',
-  7: 'Gardening & Lawn',
-  8: 'Home Repair',
-  9: 'Locksmith Services',
-  10: 'Online Courses',
-  11: 'Food Delivery'
-};
-
-const ComplaintForm = ({ serviceProviderId, onSubmit, onCancel }) => {
+const ComplaintForm = ({ 
+  isOpen, 
+  onClose, 
+  businessId, 
+  businessName, 
+  serviceType,
+  userToken 
+}) => {
+  const { isAuthenticated, user } = useContext(AuthContext);
+  
+  // auth context se user info mil rhi hai
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: 'service_issue',
-    priority: 'medium',
-    serviceProvider: serviceProviderId || '',
-    serviceProviderName: ''
+    serviceCategory: '',
+    severity: 'medium',
+    userEmail: user?.email || '',
+    contactInfo: {
+      phone: '',
+      preferredContactMethod: 'email'
+    }
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [serviceProvidersData, setServiceProvidersData] = useState({});
-  const [filteredProviders, setFilteredProviders] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [showProviderList, setShowProviderList] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
 
-  // Set service providers from imported data
+  // business change pe service category auto set krne k liye
   useEffect(() => {
-    try {
-      console.log('Initial service providers data:', serviceProviders);
-      
-      // The imported serviceProviders is already in the correct format
-      // Just ensure all IDs are strings for consistency
-      const formattedProviders = {};
-      
-      Object.entries(serviceProviders).forEach(([categoryId, providers]) => {
-        // Keep categoryId as string to match the serviceCategories keys
-        formattedProviders[categoryId] = providers.map(provider => ({
-          ...provider,
-          id: provider.id.toString()
-        }));
-      });
-      
-      console.log('Formatted providers:', formattedProviders);
-      setServiceProvidersData(formattedProviders);
-      setIsLoading(false);
-    } catch (err) {
-      console.error('Error loading service providers:', err);
-      setError('Failed to load service providers. Please try again later.');
-      setIsLoading(false);
+    if (serviceType) {
+      setFormData(prev => ({
+        ...prev,
+        serviceCategory: serviceType
+      }));
     }
-  }, [serviceProviders]); // Add serviceProviders to dependency array
-  
-  // Filter providers based on search query
-  useEffect(() => {
-    console.log('Filtering providers with:', { 
-      selectedCategory, 
-      searchQuery, 
-      availableCategories: Object.keys(serviceProvidersData) 
-    });
-    
-    if (selectedCategory && serviceProvidersData[selectedCategory]) {
-      const categoryProviders = serviceProvidersData[selectedCategory] || [];
-      console.log(`Found ${categoryProviders.length} providers for category ${selectedCategory}`, categoryProviders);
-      
-      const filtered = categoryProviders.filter(provider => {
-        const searchTerm = searchQuery.toLowerCase().trim();
-        if (!searchTerm) return true; // Show all if no search term
-        return provider.name.toLowerCase().includes(searchTerm);
-      });
-      
-      console.log(`Filtered to ${filtered.length} providers for search '${searchQuery}'`);
-      setFilteredProviders(filtered);
-    } else {
-      console.log('No category selected or no providers for category:', selectedCategory);
-      setFilteredProviders([]);
-    }
-  }, [searchQuery, selectedCategory, serviceProvidersData]);
+  }, [serviceType]);
 
-  const handleCategorySelect = (categoryId) => {
-    console.log('Category selected:', categoryId);
-    
-    setSelectedCategory(categoryId);
-    setFormData(prev => ({
-      ...prev,
-      serviceProvider: '',
-      serviceProviderName: ''
-    }));
-    setShowCategoryDropdown(false);
-    setShowProviderList(true);
-    setSearchQuery('');
-    
-    // Log available providers for debugging
-    console.log('Available providers for category:', serviceProvidersData[categoryId]);
-  };
-
-  const handleProviderSelect = (provider) => {
-    setFormData(prev => ({
-      ...prev,
-      serviceProvider: provider.id,
-      serviceProviderName: provider.name
-    }));
-    setShowProviderList(false);
-  };
-
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     
-    // Basic validation
-    if (!formData.title.trim() || !formData.description.trim()) {
-      setError('Please fill in all required fields');
+    if (!isAuthenticated) {
+      setMessage('Please log in to file a complaint');
+      setMessageType('error');
       return;
     }
-    
-    if (!serviceProviderId && !formData.serviceProvider) {
-      setError('Please select a service provider');
+
+    if (!userToken) {
+      setMessage('Please log in to file a complaint');
+      setMessageType('error');
+      return;
+    }
+
+    // Validate required fields
+    if (!formData.title.trim() || !formData.description.trim() || !formData.serviceCategory) {
+      setMessage('Please fill in all required fields');
+      setMessageType('error');
       return;
     }
 
     setIsSubmitting(true);
-    
+    setMessage('');
+
     try {
-      if (onSubmit) {
-        await onSubmit(formData);
-      }
-      // Reset form on successful submission
-      setFormData({
-        title: '',
-        description: '',
-        category: 'service_issue',
-        priority: 'medium',
-        serviceProvider: serviceProviderId || ''
+      const complaintData = {
+        businessId,
+        title: formData.title,
+        description: formData.description,
+        serviceCategory: formData.serviceCategory,
+        severity: formData.severity,
+        contactInfo: {
+          phone: formData.contactInfo.phone,
+          preferredContactMethod: formData.contactInfo.preferredContactMethod
+        },
+        // Use the email from the form or fallback to user's email
+        userEmail: formData.userEmail || user?.email || ''
+      };
+
+      // complaint submit kr rhy hain
+
+      const response = await fetch('http://localhost:5000/api/complaints', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify(complaintData)
       });
-    } catch (err) {
-      setError(err.message || 'Failed to submit complaint');
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage(data.message);
+        setMessageType('success');
+        
+        // Reset form
+        setFormData({
+          title: '',
+          description: '',
+          serviceCategory: serviceType || '',
+          severity: 'medium',
+          userEmail: user?.email || '',
+          contactInfo: {
+            phone: '',
+            preferredContactMethod: 'email'
+          }
+        });
+        
+        // Close form after successful submission
+        setTimeout(() => {
+          onClose();
+        }, 3000);
+      } else {
+        setMessage(data.message || 'Failed to submit complaint');
+        setMessageType('error');
+      }
+    } catch (error) {
+      setMessage('Network error. Please try again.');
+      setMessageType('error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleClose = () => {
+    if (!isSubmitting) {
+      setMessage('');
+      setMessageType('');
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
   return (
-    <div className="complaint-form-container">
-      <h2>File a Complaint</h2>
-      {error && <div className="error-message">{error}</div>}
-      
-      <form onSubmit={handleSubmit}>
-        {!serviceProviderId && (
-          <div className="form-group">
-            <label>Select Service Category</label>
-            <div className="dropdown">
-              <div 
-                className="dropdown-toggle" 
-                onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-              >
-                {selectedCategory ? serviceCategories[selectedCategory] : 'Select a category'}
-                <span className="dropdown-arrow">▼</span>
-              </div>
-              {showCategoryDropdown && (
-                <div className="dropdown-menu">
-                  {Object.entries(serviceCategories).map(([id, name]) => {
-                    const hasProviders = serviceProvidersData[id] && serviceProvidersData[id].length > 0;
-                    return (
-                      <div 
-                        key={id} 
-                        className={`dropdown-item ${!hasProviders ? 'disabled' : ''}`}
-                        onClick={() => hasProviders && handleCategorySelect(id)}
-                        title={!hasProviders ? 'No providers available in this category' : ''}
-                      >
-                        {name}
-                        {!hasProviders && <span className="no-providers-tag">(Empty)</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {selectedCategory && !formData.serviceProvider && (
-          <div className="form-group">
-            <label>Select Service Provider</label>
-            <div className="provider-search">
-              <input
-                type="text"
-                placeholder="Search providers..."
-                className="form-control"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setShowProviderList(true)}
-              />
-              {showProviderList && (
-                <div className="provider-list">
-                  {filteredProviders.length > 0 ? (
-                    filteredProviders.map((provider) => (
-                      <div 
-                        key={provider.id} 
-                        className="provider-item"
-                        onClick={() => handleProviderSelect(provider)}
-                      >
-                        <div className="provider-image-container">
-                          <img 
-                            src={provider.image} 
-                            alt={provider.name} 
-                            className="provider-image1"
-                            onError={(e) => {
-                              // Hide the image if it fails to load
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                        <div className="provider-info">
-                          <div className="provider-name">{provider.name}</div>
-                          <div className="provider-rating">
-                            <FaStar color="#f9b90b" />
-                            <span>{provider.rating}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="no-results">No providers found</div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {formData.serviceProvider && (
-          <div className="selected-provider">
-            <div className="selected-provider-content">
-              <div className="selected-provider-image-container">
-                <img 
-                  src={serviceProvidersData[selectedCategory]?.find(p => p.id.toString() === formData.serviceProvider.toString())?.image} 
-                  alt={formData.serviceProviderName}
-                  className="selected-provider-image"
-                  onError={(e) => {
-                    // Hide the image if it fails to load
-                    e.target.style.display = 'none';
-                  }}
-                />
-              </div>
-              <div className="selected-provider-info">
-                <h4>{formData.serviceProviderName}</h4>
-                <div className="provider-rating">
-                  <FaStar color="#f9b90b" />
-                  <span>{
-                    serviceProvidersData[selectedCategory]?.find(p => p.id.toString() === formData.serviceProvider.toString())?.rating?.toFixed(1) || 'N/A'
-                  }</span>
-                </div>
-              </div>
-            </div>
-            <button 
-              type="button" 
-              className="change-provider"
-              onClick={() => {
-                setFormData(prev => ({ ...prev, serviceProvider: '', serviceProviderName: '' }));
-                setShowProviderList(true);
-              }}
-            >
-              Change
-            </button>
-          </div>
-        )}
-        
-        <div className="form-group">
-          <label htmlFor="title">Complaint Title *</label>
-          <input
-            type="text"
-            id="title"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="Brief description of your complaint"
-            disabled={isSubmitting}
-            required
-          />
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="description">Detailed Description *</label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Please provide detailed information about your complaint"
-            rows="5"
-            disabled={isSubmitting}
-            required
-          />
-        </div>
-        
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="category">Category</label>
-            <select
-              id="category"
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            >
-              <option value="service_issue">Service Issue</option>
-              <option value="billing">Billing Problem</option>
-              <option value="professionalism">Professionalism</option>
-              <option value="safety">Safety Concern</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="priority">Priority</label>
-            <select
-              id="priority"
-              name="priority"
-              value={formData.priority}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-        </div>
-        
-        <div className="form-actions">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={onCancel}
+    <div className="complaint-modal-overlay">
+      <div className="complaint-modal">
+        <div className="complaint-modal-header">
+          <h2>File a Complaint for {businessName}</h2>
+          <button 
+            className="close-button" 
+            onClick={handleClose}
             disabled={isSubmitting}
           >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit Complaint'}
+            <FaTimes />
           </button>
         </div>
-      </form>
+
+        <div className="complaint-modal-content">
+          {!isAuthenticated ? (
+            <div className="auth-required-message">
+              <div className="auth-icon">
+                <FaRegUser />
+              </div>
+              <p>You need to be logged in to file a complaint</p>
+              <div className="auth-actions">
+                <Link to="/login" className="btn-primary">Log In</Link>
+                <Link to="/signup" className="btn-secondary">Sign Up</Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              {businessName && (
+                <div className="business-info">
+                  <h3>Complaint against: {businessName}</h3>
+                  {serviceType && <p>Service: {serviceType}</p>}
+                </div>
+              )}
+              
+              {message && (
+                <div className={`message ${messageType}`}>
+                  {messageType === 'success' ? <FaCheckCircle /> : <FaExclamationTriangle />}
+                  <span>{message}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <label htmlFor="title">Complaint Title *</label>
+                  <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="Brief description of the issue"
+                    required
+                    maxLength={200}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="serviceCategory">Service Category *</label>
+                  <select
+                    id="serviceCategory"
+                    name="serviceCategory"
+                    value={formData.serviceCategory}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    <option value="plumbing">Plumbing</option>
+                    <option value="electrical">Electrical</option>
+                    <option value="cleaning">Cleaning</option>
+                    <option value="painting">Painting</option>
+                    <option value="gardening">Gardening</option>
+                    <option value="repair">Repair</option>
+                    <option value="transport">Transport</option>
+                    <option value="security">Security</option>
+                    <option value="education">Education</option>
+                    <option value="food">Food</option>
+                    <option value="beauty">Beauty</option>
+                    <option value="health">Health</option>
+                    <option value="construction">Construction</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="severity">Severity Level</label>
+                  <select
+                    id="severity"
+                    name="severity"
+                    value={formData.severity}
+                    onChange={handleInputChange}
+                  >
+                    <option value="low">Low - Minor inconvenience</option>
+                    <option value="medium">Medium - Moderate issue</option>
+                    <option value="high">High - Significant problem</option>
+                    <option value="critical">Critical - Urgent safety concern</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="description">Detailed Description *</label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="Please provide detailed information about the issue, including when it occurred, what happened, and any relevant details..."
+                    required
+                    rows={6}
+                    maxLength={2000}
+                  />
+                  <small className="char-count">
+                    {formData.description.length}/2000 characters
+                  </small>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="phone">Phone Number (Optional)</label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="contactInfo.phone"
+                    value={formData.contactInfo.phone}
+                    onChange={handleInputChange}
+                    placeholder="Your phone number for additional contact"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="userEmail">Email Address *</label>
+                  <input
+                    type="email"
+                    id="userEmail"
+                    name="userEmail"
+                    value={formData.userEmail || user?.email || ''}
+                    onChange={handleInputChange}
+                    placeholder="Your email address for complaint updates"
+                    required
+                  />
+                  <small>This email will be used to send you updates about your complaint</small>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="preferredContactMethod">Preferred Contact Method</label>
+                  <select
+                    id="preferredContactMethod"
+                    name="contactInfo.preferredContactMethod"
+                    value={formData.contactInfo.preferredContactMethod}
+                    onChange={handleInputChange}
+                  >
+                    <option value="email">Email (Default)</option>
+                    <option value="phone">Phone</option>
+                    <option value="both">Both</option>
+                  </select>
+                </div>
+
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="cancel-button"
+                    onClick={handleClose}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="submit-button"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <FaSpinner className="spinner" />
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Complaint'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

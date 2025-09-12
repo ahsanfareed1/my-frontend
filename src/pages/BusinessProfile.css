@@ -47,6 +47,7 @@
 
 .profile-section {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   gap: 32px;
 }
@@ -65,10 +66,18 @@
   box-shadow: var(--shadow);
 }
 
-.profile-picture img {
+.profile-picture img,
+.profile-picture .business-avatar {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Ensure BusinessAvatar component fits properly */
+.business-profile-avatar {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 8px !important;
 }
 
 .experience-badge {
@@ -91,7 +100,7 @@
 
 .business-info {
   flex: 1;
-  min-width: 0;
+  min-width: 100%;
 }
 
 .business-header {
@@ -120,6 +129,17 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.verification-badge.verified {
+  background: var(--pakistani-green);
+  color: var(--white);
+}
+
+.verification-badge.unverified {
+  background: #f0f0f0;
+  color: #666;
+  border: 1px solid #ddd;
 }
 
 .rating-section {
@@ -182,14 +202,14 @@
 }
 
 /* Professional CTA Section */
-.cta-section {
+.cta-section-business-profile {
   background: var(--white);
   border-bottom: 1px solid var(--border-light);
   padding: 32px 0;
   margin-bottom: 0;
 }
 
-.cta-header {
+.cta-header-business-profile {
   text-align: center;
   margin-bottom: 32px;
   max-width: 1200px;
@@ -198,14 +218,14 @@
   padding: 0 24px;
 }
 
-.cta-header h3 {
+.cta-header-business-profile h3 {
   color: var(--text-dark);
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 8px 0;
 }
 
-.cta-header p {
+.cta-header-business-profile p {
   color: #666;
   font-size: 1rem;
   margin: 0;
@@ -213,7 +233,7 @@
 
 .cta-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   max-width: 1200px;
   margin: 0 auto;
@@ -235,6 +255,7 @@
   background: var(--white);
   color: var(--text-dark);
   min-height: 80px;
+  position: relative;
 }
 
 .cta-button:hover {
@@ -278,26 +299,85 @@
 
 .cta-call:hover .cta-icon,
 .cta-call:hover .cta-title,
-.cta-call:hover .cta-subtitle {
-  color: var(--white);
+.cta-call:hover .cta-subtitle,
+.cta-inquiry:hover .cta-icon,
+.cta-inquiry:hover .cta-subtitle,
+.cta-inquiry:hover .cta-title{
+  color: var(--white) !important;
 }
 
 .cta-inquiry:hover {
-  background: var(--pakistani-gold);
-  color: var(--dark-gray);
-  border-color: var(--pakistani-gold);
+  background: var(--pakistani-green) !important;
+  color: var(--white)  !important;
+  border-color: var(--pakistani-green)  !important;
+}
+
+.cta-complaint:hover {
+  background: var(--pakistani-green);
+  color: var(--white);
+  border-color: var(--pakistani-green);
+}
+
+.cta-complaint:hover .cta-icon,
+.cta-complaint:hover .cta-title,
+.cta-complaint:hover .cta-subtitle {
+  color: var(--white);
 }
 
 .cta-write-review:hover {
-  background: #ff6b6b;
+  background: var(--pakistani-green);
   color: var(--white);
-  border-color: #ff6b6b;
+  border-color: var(--pakistani-green);
 }
 
 .cta-write-review:hover .cta-icon,
 .cta-write-review:hover .cta-title,
 .cta-write-review:hover .cta-subtitle {
   color: var(--white);
+}
+
+/* Message Button Styling */
+.cta-message {
+  background: var(--pakistani-green);
+  color: var(--white);
+  border-color: var(--pakistani-green);
+}
+
+.cta-message .cta-icon,
+.cta-message .cta-title,
+.cta-message .cta-subtitle {
+  color: var(--white);
+}
+
+.cta-message:hover {
+  background: var(--pakistani-green-dark);
+  color: var(--white);
+  border-color: var(--pakistani-green-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.cta-message:hover .cta-icon,
+.cta-message:hover .cta-title,
+.cta-message:hover .cta-subtitle {
+  color: var(--white);
+}
+
+/* Error message styling for CTA buttons */
+.cta-button .error-message {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ef4444;
+  color: white;
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+  text-align: center;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 /* Professional Information Cards */
@@ -343,6 +423,7 @@
   width: 20px;
   text-align: center;
 }
+
 
 .info-card h3 {
   color: var(--text-dark);
@@ -1070,6 +1151,151 @@
   text-decoration: underline;
 }
 
+/* Additional Services Styles */
+.additional-services-list {
+  margin-top: 1.5rem;
+}
+
+.additional-services-list h4 {
+  color: var(--pakistani-green);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.additional-services-list h4::before {
+  content: "💰";
+  font-size: 1.2rem;
+}
+
+.additional-services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.additional-service-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.additional-service-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--pakistani-green), var(--pakistani-green-accent));
+}
+
+.additional-service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 139, 34, 0.15);
+  border-color: var(--pakistani-green-accent);
+}
+
+.service-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.service-title {
+  color: var(--pakistani-green-dark);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.3;
+  flex: 1;
+}
+
+.service-pricing {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.service-pricing .price {
+  background: var(--pakistani-green);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.service-pricing .price.negotiable {
+  background: #6c757d;
+  font-style: italic;
+}
+
+.service-description {
+  color: var(--text-dark);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Responsive Design for Additional Services */
+@media (max-width: 768px) {
+  .additional-services-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .additional-service-card {
+    padding: 1rem;
+  }
+  
+  .service-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .service-pricing .price {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+  }
+  
+  .service-title {
+    font-size: 0.95rem;
+  }
+  
+  .service-description {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .additional-services-list h4 {
+    font-size: 1rem;
+  }
+  
+  .additional-service-card {
+    padding: 0.875rem;
+  }
+  
+  .service-pricing .price {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
 /* Success and Error Messages */
 .success-message {
   background: var(--pakistani-green-accent);
@@ -1225,5 +1451,17 @@
   
   .reviews-card {
     padding: 20px 12px;
+  }
+}
+
+/* Success Message Animation */
+@keyframes slideInRight {
+  from { 
+    opacity: 0; 
+    transform: translateX(100%); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateX(0); 
   }
 }

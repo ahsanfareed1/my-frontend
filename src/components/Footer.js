@@ -73,12 +73,12 @@ const Footer = () => {
           <div className="footer-section">
             <h4>Service Categories</h4>
             <ul className="footer-links">
-              <li><Link to="/services">Plumbing Services</Link></li>
-              <li><Link to="/services">Electrical Services</Link></li>
-              <li><Link to="/services">Cleaning Services</Link></li>
-              <li><Link to="/services">Home Repairs</Link></li>
-              <li><Link to="/services">Transportation</Link></li>
-              <li><Link to="/services">Education & Training</Link></li>
+              <li><Link to="/service-categories">All Service Categories</Link></li>
+              <li><Link to="/services?category=plumbing">Plumbing Services</Link></li>
+              <li><Link to="/services?category=electrical">Electrical Services</Link></li>
+              <li><Link to="/services?category=cleaning">Cleaning Services</Link></li>
+              <li><Link to="/services?category=repair">Home Repairs</Link></li>
+              <li><Link to="/services?category=transport">Transportation</Link></li>
             </ul>
           </div>
 
@@ -146,7 +146,7 @@ const Footer = () => {
             <p>Subscribe to our newsletter for latest updates, offers, and service provider recommendations.</p>
           </div>
           <form className="newsletter-form">
-            <div className="form-group">
+            <div className="newsletter-form-group">
               <input 
                 type="email" 
                 placeholder="Enter your email address" 

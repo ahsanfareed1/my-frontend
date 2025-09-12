@@ -67,6 +67,7 @@ export const AdminProvider = ({ children }) => {
   const logout = async () => {
     try {
       const adminToken = localStorage.getItem('adminToken');
+      
       if (adminToken) {
         await fetch('http://localhost:5000/api/admin/logout', {
           method: 'POST',
@@ -79,7 +80,7 @@ export const AdminProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear admin data regardless of API call success
+      // Clear all authentication data
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminData');
       setAdmin(null);
@@ -89,19 +90,37 @@ export const AdminProvider = ({ children }) => {
 
   const getAuthHeaders = () => {
     const adminToken = localStorage.getItem('adminToken');
+    
     return {
       'Authorization': `Bearer ${adminToken}`,
       'Content-Type': 'application/json',
     };
   };
 
+  const updateAdminProfile = (updatedProfile) => {
+    setAdmin(prev => ({ ...prev, ...updatedProfile }));
+    // Also update localStorage
+    const adminData = localStorage.getItem('adminData');
+    if (adminData) {
+      try {
+        const parsedAdmin = JSON.parse(adminData);
+        const updatedAdmin = { ...parsedAdmin, ...updatedProfile };
+        localStorage.setItem('adminData', JSON.stringify(updatedAdmin));
+      } catch (error) {
+        console.error('Error updating admin data in localStorage:', error);
+      }
+    }
+  };
+
   const value = {
     admin,
+    setAdmin,
     isAuthenticated,
     loading,
     login,
     logout,
     getAuthHeaders,
+    updateAdminProfile,
   };
 
   return (

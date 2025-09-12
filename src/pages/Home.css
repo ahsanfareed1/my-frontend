@@ -37,7 +37,7 @@
   background: rgba(0, 100, 0, 0.1);
 }
 
-.hero-content {
+.home-hero-content {
   position: relative;
   z-index: 2;
   display: flex;
@@ -75,7 +75,7 @@
   font-size: 16px;
 }
 
-.hero-title {
+.home-hero-title {
   font-size: 3.5rem;
   font-weight: 800;
   line-height: 1.2;
@@ -103,7 +103,7 @@
   margin-bottom: 2.5rem;
 }
 
-.stat-item {
+.home-stat-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -115,28 +115,29 @@
   transition: all 0.3s ease;
 }
 
-.stat-item:hover {
+.home-stat-item:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
 }
 
-.stat-icon {
+.home-stat-icon {
   font-size: 24px;
   flex-shrink: 0;
+  color:rgb(255, 215, 0) !important;
 }
 
-.stat-content {
+.home-stat-content {
   display: flex;
   flex-direction: column;
 }
 
-.stat-number {
+.home-stat-number {
   font-size: 1.5rem;
   font-weight: 800;
   line-height: 1;
 }
 
-.stat-label {
+.home-stat-label {
   font-size: 0.875rem;
   opacity: 0.9;
   font-weight: 500;
@@ -216,7 +217,6 @@
   gap: 0.5rem;
   font-weight: 600;
   font-size: 14px;
-  animation: float 3s ease-in-out infinite;
 }
 
 .floating-card.card-1 {
@@ -513,90 +513,321 @@
   transform: translateY(-2px);
 }
 
-/* Reviews Section */
-.reviews-section {
+/* Recent Activities Section */
+.recent-activities-section {
   padding: 5rem 0;
   background: #f8f9fa;
 }
 
-.reviews-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 2rem;
+/* Carousel Styles */
+.activities-carousel {
+  position: relative;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
-.review-card {
+.carousel-container {
+  overflow: hidden;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.5s ease-in-out;
+  width: 100%;
+}
+
+.carousel-slide {
+  min-width: 100%;
+  flex-shrink: 0;
+  padding: 2rem;
+}
+
+.slide-content {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  width: 100%;
+  min-height: 300px;
+}
+
+/* Force horizontal layout */
+.carousel-track {
+  display: flex !important;
+  flex-direction: row !important;
+}
+
+.carousel-slide {
+  display: block !important;
+  width: 100% !important;
+  flex-shrink: 0 !important;
+}
+
+.carousel-controls {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.carousel-btn {
+  background: rgba(255, 255, 255, 0.9);
+  color: #006400;
+  border: 2px solid #006400;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  pointer-events: auto;
+}
+
+.carousel-btn:hover {
+  background: #006400;
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(0, 100, 0, 0.3);
+}
+
+.carousel-btn:disabled {
+  background: rgba(255, 255, 255, 0.5);
+  color: #ccc;
+  border-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+
+
+.activity-card {
   background: white;
   padding: 2rem;
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   border: 1px solid #e8f5e8;
+  position: relative;
+  overflow: hidden;
 }
 
-.review-card:hover {
+.activity-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 30px rgba(0, 100, 0, 0.15);
   border-color: #006400;
 }
 
-.review-header {
+.activity-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #006400, #228B22);
+}
+
+.activity-header {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
+  justify-content: space-between;
   margin-bottom: 1.5rem;
 }
 
-.reviewer-avatar {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid #e8f5e8;
-}
-
 .reviewer-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   flex: 1;
 }
 
-.reviewer-info h4 {
+.reviewer-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #e8f5e8;
+  flex-shrink: 0;
+}
+
+.reviewer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #006400, #228B22);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.reviewer-details h4 {
   font-size: 1.125rem;
   font-weight: 700;
   color: #2c3e50;
   margin-bottom: 0.25rem;
 }
 
-.reviewer-location,
-.reviewer-service {
+.activity-time {
   font-size: 0.875rem;
   color: #666;
-  margin-bottom: 0.25rem;
   display: flex;
   align-items: center;
   gap: 0.25rem;
 }
 
-.review-rating {
+.activity-rating {
   display: flex;
   gap: 2px;
+  flex-shrink: 0;
 }
 
-.review-content {
+.star.filled {
+  color: #FFD700;
+}
+
+.star.empty {
+  color: #e0e0e0;
+}
+
+.activity-content {
+  margin-bottom: 1.5rem;
+}
+
+.business-info {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #006400;
+}
+
+.business-info h5 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.business-location {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.service-type {
+  display: inline-block;
+  background: #006400;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.review-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.75rem;
+}
+
+.review-comment {
+  color: #333;
+  line-height: 1.6;
+  font-size: 0.95rem;
   position: relative;
+  padding-left: 1.5rem;
 }
 
 .quote-icon {
+  position: absolute;
+  left: 0;
+  top: 0;
   color: #006400;
-  font-size: 24px;
-  margin-bottom: 1rem;
-  opacity: 0.3;
+  font-size: 16px;
+  opacity: 0.6;
 }
 
-.review-content p {
-  color: #333;
+.activity-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.view-business-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #006400;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.view-business-btn:hover {
+  background: #228B22;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 100, 0, 0.3);
+}
+
+.no-activities {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.no-activities-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.no-activities-icon {
+  font-size: 4rem;
+  color: #e0e0e0;
+  margin-bottom: 1rem;
+}
+
+.no-activities-content h3 {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.no-activities-content p {
+  color: #666;
+  margin-bottom: 2rem;
   line-height: 1.6;
-  font-size: 1rem;
-  font-style: italic;
 }
 
 /* CTA Section */
@@ -732,9 +963,9 @@
 }
 
 .avatar-container {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+  width: 80px;
+    height: 80px;
+    border-radius: 10px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -901,13 +1132,13 @@
 
 /* Responsive Design */
 @media (max-width: 1024px) {
-  .hero-content {
+  .home-hero-content {
     flex-direction: column;
     text-align: center;
     gap: 3rem;
   }
   
-  .hero-title {
+  .home-hero-title {
     font-size: 3rem;
   }
   
@@ -933,7 +1164,7 @@
     padding: 0 1rem;
   }
   
-  .hero-title {
+  .home-hero-title {
     font-size: 2.5rem;
   }
   
@@ -965,10 +1196,35 @@
   .section-header h2 {
     font-size: 2rem;
   }
+  .hero-image-container{
+    width: 380px;
+
+  }
+  
+  /* Mobile Carousel Styles */
+  .slide-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 400px;
+  }
+  
+  .carousel-slide {
+    padding: 1.5rem;
+  }
+  
+  .carousel-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+  
+  .carousel-controls {
+    padding: 0 10px;
+  }
 }
 
 @media (max-width: 480px) {
-  .hero-title {
+  .home-hero-title {
     font-size: 2rem;
   }
   

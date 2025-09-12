@@ -18,74 +18,101 @@ import {
   FaHeart,
   FaQuoteLeft,
   FaArrowRight,
-  FaPlay
+  FaPlay,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
 
 const Home = () => {
   const navigate = useNavigate();
   const [featuredServices, setFeaturedServices] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showVideo, setShowVideo] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  const nextSlide = () => {
+    const itemsPerSlide = isMobile ? 1 : 3;
+    const maxSlides = Math.ceil(recentActivities.length / itemsPerSlide);
+    setCurrentSlide((prev) => (prev + 1) % maxSlides);
+  };
 
-  // Sample customer reviews data
-  const customerReviews = [
-    {
-      id: 1,
-      name: "Ahmed Khan",
-      location: "Lahore",
-      rating: 5,
-      comment: "Found an excellent plumber through AAA Services. Professional, punctual, and reasonably priced. Highly recommended!",
-      service: "Plumbing",
-      avatar: "https://via.placeholder.com/60x60/006400/ffffff?text=AK"
-    },
-    {
-      id: 2,
-      name: "Fatima Zahra",
-      location: "Karachi",
-      rating: 5,
-      comment: "The electrician I found here was amazing. Fixed all issues quickly and safely. Will definitely use again!",
-      service: "Electrical",
-      avatar: "https://via.placeholder.com/60x60/228B22/ffffff?text=FZ"
-    },
-    {
-      id: 3,
-      name: "Muhammad Ali",
-      location: "Islamabad",
-      rating: 5,
-      comment: "Outstanding cleaning service! The team was thorough and professional. My house looks brand new!",
-      service: "Cleaning",
-      avatar: "https://via.placeholder.com/60x60/32CD32/ffffff?text=MA"
+  const prevSlide = () => {
+    const itemsPerSlide = isMobile ? 1 : 3;
+    const maxSlides = Math.ceil(recentActivities.length / itemsPerSlide);
+    setCurrentSlide((prev) => (prev - 1 + maxSlides) % maxSlides);
+  };
+  useEffect(() => {
+    setCurrentSlide(0);
+  }, [recentActivities, isMobile]);
+
+  // business url banane k liye helper
+  const generateBusinessUrl = (activity) => {
+    const generateSlug = (title) => {
+      if (!title) return '';
+      return title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '') 
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-') 
+        .trim('-');
+    };
+        const category = activity.serviceType ? 
+      activity.serviceType.toLowerCase().replace(/[^a-z0-9]/g, '') : 
+      'other';
+    
+    const businessSlug = generateSlug(activity.business.name);
+    return `/business/${category}/${businessSlug}`;
+  };
+
+  const fetchRecentActivities = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/reviews/recent?limit=6');
+      if (response.ok) {
+        const data = await response.json();
+        setRecentActivities(data.reviews || []);
+      } else {
+        // recent activities fetch na ho to empty set krdo
+        setRecentActivities([]);
+      }
+    } catch (error) {
+      // network error pe quietly handle
+      setRecentActivities([]);
     }
-  ];
-
-  // Sample statistics data
+  };
   const stats = [
     { number: "10K+", label: "Happy Customers", icon: FaUsers, color: "#006400" },
     { number: "4.8", label: "Average Rating", icon: FaStar, color: "#FFD700" },
     { number: "100%", label: "Verified Providers", icon: FaShieldAlt, color: "#228B22" },
 
   ];
-
-  // Fetch featured services from localStorage or API
   useEffect(() => {
-    // Clear any cached business data to ensure fresh data
     clearCacheOnLoad();
     
-    const fetchFeaturedServices = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch only active businesses from API
-        const response = await fetch('http://localhost:5000/api/business?status=active&limit=10');
-        if (response.ok) {
-          const data = await response.json();
+                const [featuredResponse, activitiesResponse] = await Promise.all([
+          fetch('http://localhost:5000/api/business?status=active&limit=10'),
+          fetch('http://localhost:5000/api/reviews/recent?limit=6')
+        ]);
+                if (featuredResponse.ok) {
+          const data = await featuredResponse.json();
           const activeBusinesses = data.businesses || [];
           
-          // Get any 3 random active businesses
           let featured = [];
           if (activeBusinesses.length > 0) {
-            // Shuffle the businesses array to get random selection
             const shuffled = [...activeBusinesses].sort(() => 0.5 - Math.random());
             featured = shuffled.slice(0, 3).map(business => ({
               ...business,
@@ -105,11 +132,18 @@ const Home = () => {
         } else {
           throw new Error('Failed to fetch businesses');
         }
-      } catch (err) {
-        console.error('Error fetching featured services:', err);
-        setError('Failed to load featured services');
+          if (activitiesResponse.ok) {
+            const data = await activitiesResponse.json();
+            setRecentActivities(data.reviews || []);
+          } else {
+            // recent activities fail ho to empty
+            setRecentActivities([]);
+          }
         
-        // Fallback to sample data if API fails
+      } catch (err) {
+        // data fetch error pe fallback use kr rhy hain
+        setError('Failed to load data');
+        
         const fallbackServices = [
           {
             id: 'sample1',
@@ -146,28 +180,28 @@ const Home = () => {
           }
         ];
         setFeaturedServices(fallbackServices);
+        setRecentActivities([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFeaturedServices();
+    fetchData();
   }, []);
 
   return (
     <div className="home-page">
-      {/* Hero Section */}
       <section className="hero-section">
         <div className="hero-background">
           <div className="hero-overlay"></div>
         </div>
-        <div className="hero-content">
+        <div className="home-hero-content">
           <div className="hero-text">
             <div className="hero-badge">
               <FaStar className="badge-icon" />
               <span>Pakistan's #1 Service Directory</span>
             </div>
-            <h1 className="hero-title">
+            <h1 className="home-hero-title">
               Find Trusted Service Providers
               <span className="hero-highlight"> Near You</span>
             </h1>
@@ -177,11 +211,11 @@ const Home = () => {
             </p>
             <div className="hero-stats">
               {stats.map((stat, index) => (
-                <div key={index} className="stat-item">
-                  <stat.icon className="stat-icon" style={{ color: stat.color }} />
-                  <div className="stat-content">
-                    <span className="stat-number">{stat.number}</span>
-                    <span className="stat-label">{stat.label}</span>
+                <div key={index} className="home-stat-item">
+                  <stat.icon className="home-stat-icon" style={{ color: stat.color }} />
+                  <div className="home-stat-content">
+                    <span className="home-stat-number">{stat.number}</span>
+                    <span className="home-stat-label">{stat.label}</span>
                   </div>
                 </div>
               ))}
@@ -191,7 +225,7 @@ const Home = () => {
                 <FaSearch className="btn-icon" />
                 Find Services
               </Link>
-              <Link to="/signup" className="hero-btn secondary">
+              <Link to="/service-provider-signup" className="hero-btn secondary">
                 Join as Provider
               </Link>
             </div>
@@ -224,7 +258,7 @@ const Home = () => {
 
                     <iframe
                       className="hero-video-player"
-                      src="https://www.youtube.com/embed/V-Ea-vxGnuw?autoplay=1&mute=0&loop=1&playlist=V-Ea-vxGnuw&controls=1&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&fs=1"
+                      src="AAA Service Directory Video.mp4"
                       title="AAA Service Directory Video"
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -237,8 +271,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-
-      {/* Why Choose Us Section */}
       <section className="why-choose-section">
         <div className="container">
           <div className="section-header">
@@ -271,11 +303,7 @@ const Home = () => {
           </div>
         </div>
       </section>
-
-      {/* Services Section */}
       <ServicesSection />
-
-      {/* Featured Services Section */}
       <section className="featured-providers-section">
         <div className="container">
           <div className="section-header">
@@ -302,8 +330,30 @@ const Home = () => {
             </div>
           ) : (
             <div className="providers-grid">
-              {featuredServices.map((service) => (
-                <div key={service.id} className="provider-card" onClick={() => navigate(`/business/${service.id}`)}>
+              {featuredServices.map(service => (
+                <div key={service.id} className="provider-card" onClick={() => {
+                  // Generate slug from business name
+                  const generateSlug = (title) => {
+                    if (!title) return '';
+                    return title
+                      .toLowerCase()
+                      .replace(/[^a-z0-9\s-]/g, '') 
+                      .replace(/\s+/g, '-') 
+                      .replace(/-+/g, '-') 
+                      .trim('-');
+                  };
+                  
+                  let category = service.businessType || 
+                                 service.category || 
+                                 service.serviceType || 
+                                 (service.services && service.services[0] && service.services[0].name) ||
+                                 'other';
+                  
+                  category = category.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  
+                  const slug = generateSlug(service.businessName);
+                  navigate(`/business/${category}/${slug}`);
+                }}>
                   <div className="provider-card-header">
                     <div className="provider-avatar">
                       <div className="avatar-container">
@@ -313,8 +363,12 @@ const Home = () => {
                             src={service.image} 
                             alt={service.name} 
                             onError={(e) => {
-                              e.currentTarget.style.display = 'none'; 
-                              e.currentTarget.nextElementSibling.style.display = 'flex';
+                              if (e.currentTarget) {
+                                e.currentTarget.style.display = 'none';
+                              }
+                              if (e.currentTarget && e.currentTarget.nextElementSibling) {
+                                e.currentTarget.nextElementSibling.style.display = 'flex';
+                              }
                             }} 
                           />
                         ) : null}
@@ -326,7 +380,7 @@ const Home = () => {
                     
                     <div className="provider-info">
                       <h3 className="provider-name" title={service.name}>{service.name}</h3>
-                      <span className="provider-title">{service.type || service.service}</span>
+                     
                       <p className="provider-location">
                         <i className="fas fa-map-marker-alt"></i>
                         <span className="location-text">{service.address || service.city || service.location}</span>
@@ -370,7 +424,27 @@ const Home = () => {
                       className="action-button primary-button" 
                       onClick={(e) => {
                         e.stopPropagation(); 
-                        navigate(`/business/${service.id}`);
+                        // Generate slug from business name
+                        const generateSlug = (title) => {
+                          if (!title) return '';
+                          return title
+                            .toLowerCase()
+                            .replace(/[^a-z0-9\s-]/g, '') 
+                            .replace(/\s+/g, '-') 
+                            .replace(/-+/g, '-') 
+                            .trim('-');
+                        };
+                        
+                        let category = service.businessType || 
+                                       service.category || 
+                                       service.serviceType || 
+                                       (service.services && service.services[0] && service.services[0].name) ||
+                                       'other';
+                        
+                        category = category.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        
+                        const slug = generateSlug(service.businessName);
+                        navigate(`/business/${category}/${slug}`);
                       }}
                     >
                       <i className="fas fa-user"></i> View Profile
@@ -388,43 +462,132 @@ const Home = () => {
           </div>
         </div>
       </section>
-
-      {/* Customer Reviews Section */}
-      <section className="reviews-section">
+      <section className="recent-activities-section">
         <div className="container">
           <div className="section-header">
-            <h2>What Our Customers Say</h2>
-            <p>Real reviews from satisfied customers across Pakistan</p>
+            <h2>Recent Activities</h2>
+            <p>Latest reviews and activities from our community</p>
           </div>
-          <div className="reviews-grid">
-            {customerReviews.map((review) => (
-              <div key={review.id} className="review-card">
-                <div className="review-header">
-                  <img src={review.avatar} alt={review.name} className="reviewer-avatar" />
-                  <div className="reviewer-info">
-                    <h4>{review.name}</h4>
-                    <p className="reviewer-location">
-                      <FaMapMarkerAlt /> {review.location}
-                    </p>
-                    <p className="reviewer-service">{review.service}</p>
-                  </div>
-                  <div className="review-rating">
-                    {[...Array(5)].map((_, i) => (
-                      <FaStar key={i} className="star filled" />
-                    ))}
-                  </div>
+          
+          {recentActivities.length > 0 ? (
+            <div className="activities-carousel">
+              <div className="carousel-container">
+                <div 
+                  className="carousel-track"
+                  style={{
+                    transform: `translateX(-${currentSlide * 100}%)`
+                  }}
+                >
+                  {(() => {
+                    const itemsPerSlide = isMobile ? 1 : 3;
+                    const slides = [];
+                    
+                    for (let i = 0; i < recentActivities.length; i += itemsPerSlide) {
+                      const slideActivities = recentActivities.slice(i, i + itemsPerSlide);
+                      slides.push(
+                        <div key={i} className="carousel-slide">
+                          <div className="slide-content">
+                            {slideActivities.map((activity) => (
+                              <div key={activity.id} className="activity-card">
+                                <div className="activity-header">
+                                  <div className="reviewer-info">
+                                    <div className="reviewer-avatar">
+                                      {activity.reviewer.avatar ? (
+                                        <img src={activity.reviewer.avatar} alt={activity.reviewer.name} />
+                                      ) : (
+                                        <div className="avatar-placeholder">
+                                          {activity.reviewer.name.charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="reviewer-details">
+                                      <h4>{activity.reviewer.name}</h4>
+                                      <p className="activity-time">
+                                        <FaClock /> {new Date(activity.createdAt).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="activity-rating">
+                                    {[...Array(5)].map((_, i) => (
+                                      <FaStar 
+                                        key={i} 
+                                        className={`star ${i < activity.rating ? 'filled' : 'empty'}`} 
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                                <div className="activity-content">
+                                  <div className="business-info">
+                                    <h5>{activity.business.name}</h5>
+                                    <p className="business-location">
+                                      <FaMapMarkerAlt /> {activity.business.city}
+                                    </p>
+                                    <span className="service-type">{activity.serviceType}</span>
+                                  </div>
+                                  
+                                  {activity.title && (
+                                    <h6 className="review-title">{activity.title}</h6>
+                                  )}
+                                  
+                                  <p className="review-comment">
+                                    <FaQuoteLeft className="quote-icon" />
+                                    {activity.comment}
+                                  </p>
+                                </div>
+                                
+                                <div className="activity-footer">
+                                  <Link 
+                                    to={generateBusinessUrl(activity)} 
+                                    className="view-business-btn"
+                                  >
+                                    <FaArrowRight className="btn-icon" />
+                                    View Business
+                                  </Link>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return slides;
+                  })()}
                 </div>
-                <div className="review-content">
-                  <FaQuoteLeft className="quote-icon" />
-                  <p>{review.comment}</p>
+                
+                <div className="carousel-controls">
+                  <button 
+                    className="carousel-btn prev-btn" 
+                    onClick={prevSlide}
+                    aria-label="Previous activities"
+                  >
+                    <FaChevronLeft />
+                  </button>
+                  <button 
+                    className="carousel-btn next-btn" 
+                    onClick={nextSlide}
+                    aria-label="Next activities"
+                  >
+                    <FaChevronRight />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="no-activities">
+              <div className="no-activities-content">
+                <FaStar className="no-activities-icon" />
+                <h3>No Recent Activities</h3>
+                <p>Be the first to leave a review and help others find great services!</p>
+                <Link to="/services" className="cta-btn primary">
+                  <FaSearch className="btn-icon" />
+                  Find Services
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </section>
-
-      {/* Call to Action Section */}
       <section className="cta-section">
         <div className="container">
           <div className="cta-content">

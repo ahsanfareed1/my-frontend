@@ -1,42 +1,138 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import ServiceCategorySelector from '../components/ServiceCategorySelector';
 import './Signup.css';
 
-const serviceCategories = [
-  { id: 1, name: 'Plumbing' },
-  { id: 2, name: 'Electrical' },
-  { id: 3, name: 'Food Catering' },
-  { id: 4, name: 'Home Painting' },
-  { id: 5, name: 'Transport Services' },
-  { id: 6, name: 'Home Cleaning' },
-  { id: 7, name: 'Gardening & Lawn' },
-  { id: 8, name: 'Home Repair' },
-  { id: 9, name: 'Locksmith Services' },
-  { id: 10, name: 'Moving & Storage' },
-  { id: 11, name: 'Food Delivery' },
-  { id: 12, name: 'Pest Control' },
-  { id: 13, name: 'Personal Training' },
-  { id: 14, name: 'Other' }
+// Pakistani cities data
+const pakistaniCities = [
+  'Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Gujranwala', 'Peshawar', 'Quetta', 'Sialkot',
+  'Sargodha', 'Bahawalpur', 'Sukkur', 'Jhang', 'Sheikhupura', 'Larkana', 'Rahim Yar Khan', 'Gujrat', 'Kasur', 'Mardan',
+  'Mingora', 'Nawabshah', 'Chiniot', 'Kotri', 'Khanpur', 'Hafizabad', 'Kohat', 'Jacobabad', 'Shikarpur', 'Muzaffargarh',
+  'Khanewal', 'Hassan Abdal', 'Kamoke', 'Sahiwal', 'Gothki', 'Dera Ghazi Khan', 'Nowshera', 'Chaman', 'Kot Addu', 'Turbat',
+  'Muzaffarabad', 'Abbottabad', 'Jhelum', 'Mansehra', 'Battagram', 'Kotli', 'Vehari', 'Tando Allahyar', 'Mirpur Khas', 'Nawabshah',
+  'Chishtian', 'Jatoi', 'Ahmadpur East', 'Kamalia', 'Wazirabad', 'Attock', 'Vihari', 'Jampur', 'Mianwali', 'Chakwal',
+  'Toba Tek Singh', 'Narowal', 'Shujaabad', 'Khushab', 'Kabirwala', 'Hasilpur', 'Charsadda', 'Bhakkar', 'Chichawatni', 'Kharian',
+  'Mian Channu', 'Bhalwal', 'Zahir Pir', 'Dera Ismail Khan', 'Parachinar', 'Gwadar', 'Kandhkot', 'Abdul Hakim', 'Hassan Abdal', 'Lakki Marwat',
+  'Layyah', 'Chamber', 'Dipalpur', 'Shahdadkot', 'Pishin', 'Sanghar', 'Umerkot', 'Chak Jhumra', 'Qila Abdullah', 'Haripur',
+  'Khairpur', 'Kotri', 'Uch', 'Shahdadpur', 'Jhal Magsi', 'Jati', 'Matiari', 'Malir Cantonment', 'Vihari', 'Naushahro Feroze'
 ];
+
+// Service categories are now fetched from the API via ServiceCategorySelector component
 
 // Map UI categories to backend enum business types
 const mapCategoryToBusinessType = (categoryName) => {
+  console.log('🔍 DEBUG mapCategoryToBusinessType input:', categoryName);
   const key = (categoryName || '').toLowerCase();
-  if (key.includes('plumb')) return 'plumbing';
-  if (key.includes('electric')) return 'electrical';
-  if (key.includes('paint')) return 'painting';
-  if (key.includes('clean')) return 'cleaning';
-  if (key.includes('garden') || key.includes('lawn')) return 'gardening';
-  if (key.includes('repair')) return 'repair';
-  if (key.includes('transport') || key.includes('moving')) return 'transport';
-  if (key.includes('security') || key.includes('lock')) return 'security';
-  if (key.includes('education') || key.includes('tutor')) return 'education';
-  if (key.includes('food') || key.includes('cater')) return 'food';
-  if (key.includes('beauty')) return 'beauty';
-  if (key.includes('health') || key.includes('training')) return 'health';
-  if (key.includes('construct')) return 'construction';
-  if (key.includes('maint')) return 'maintenance';
+  console.log('🔍 DEBUG mapCategoryToBusinessType key:', key);
+  
+  // Plumbing & Water Services
+  if (key.includes('plumb') || key.includes('water') || key.includes('pipe') || key.includes('drain')) return 'plumbing';
+  
+  // Electrical Services
+  if (key.includes('electric') || key.includes('wiring') || key.includes('power') || key.includes('light')) return 'electrical';
+  
+  // Cleaning Services
+  if (key.includes('clean') || key.includes('housekeeping') || key.includes('janitorial')) return 'cleaning';
+  
+  // Painting Services
+  if (key.includes('paint') || key.includes('wall') || key.includes('coating') || key.includes('finish')) return 'painting';
+  
+  // Gardening & Landscaping
+  if (key.includes('garden') || key.includes('lawn') || key.includes('landscape') || key.includes('outdoor') || key.includes('yard')) return 'gardening';
+  
+  // Repair & Maintenance
+  if (key.includes('repair') || key.includes('fix') || key.includes('maintenance') || key.includes('restore')) return 'repair';
+  
+  // Transport Services
+  if (key.includes('transport') || key.includes('moving') || key.includes('delivery') || key.includes('shipping') || key.includes('logistics')) return 'transport';
+  
+  // Security Services
+  if (key.includes('security') || key.includes('guard') || key.includes('safety') || key.includes('protection') || key.includes('lock')) return 'security';
+  
+  // Education & Training
+  if (key.includes('education') || key.includes('tutor') || key.includes('training') || key.includes('learning') || key.includes('course') || key.includes('school')) return 'education';
+  
+  // Food Services
+  if (key.includes('food') || key.includes('cater') || key.includes('restaurant') || key.includes('cooking') || key.includes('meal') || key.includes('dining')) return 'food';
+  
+  // Beauty & Personal Care
+  if (key.includes('beauty') || key.includes('salon') || key.includes('spa') || key.includes('grooming') || key.includes('cosmetic') || key.includes('hair')) return 'beauty';
+  
+  // Health & Medical
+  if (key.includes('health') || key.includes('medical') || key.includes('fitness') || key.includes('wellness') || key.includes('therapy') || key.includes('care')) return 'health';
+  
+  // Construction Services
+  if (key.includes('construct') || key.includes('building') || key.includes('renovation') || key.includes('remodel') || key.includes('contractor')) return 'construction';
+  
+  // Roofing Services
+  if (key.includes('roof') || key.includes('shingle') || key.includes('gutter')) return 'roofing';
+  
+  // Maintenance Services
+  if (key.includes('maint') || key.includes('facility') || key.includes('upkeep')) {
+    console.log('🔍 DEBUG mapCategoryToBusinessType returning: maintenance');
+    return 'maintenance';
+  }
+  
+  // Legal Services
+  if (key.includes('legal') || key.includes('law') || key.includes('attorney') || key.includes('lawyer') || key.includes('counsel')) return 'legal';
+  
+  // Accounting Services
+  if (key.includes('accounting') || key.includes('bookkeeping') || key.includes('finance') || key.includes('tax') || key.includes('audit') || key.includes('cpa')) {
+    console.log('🔍 DEBUG mapCategoryToBusinessType returning: accounting');
+    return 'accounting';
+  }
+  
+  // Automotive Services
+  if (key.includes('automotive') || key.includes('car') || key.includes('vehicle') || key.includes('auto') || key.includes('mechanic') || key.includes('wash') || key.includes('detailing')) return 'automotive';
+  
+  // IT & Technology
+  if (key.includes('it') || key.includes('technology') || key.includes('tech') || key.includes('computer') || key.includes('software') || key.includes('digital')) return 'technology';
+  
+  // Business Services
+  if (key.includes('business') || key.includes('consulting') || key.includes('professional') || key.includes('corporate') || key.includes('management')) return 'business';
+  
+  // Pet Services
+  if (key.includes('pet') || key.includes('animal') || key.includes('veterinary') || key.includes('grooming') || key.includes('dog') || key.includes('cat')) return 'pet';
+  
+  // Pest Control
+  if (key.includes('pest') || key.includes('exterminator') || key.includes('bug') || key.includes('insect') || key.includes('rodent')) return 'pest';
+  
+  // Marketing Services
+  if (key.includes('marketing') || key.includes('advertising') || key.includes('seo') || key.includes('social media') || key.includes('digital marketing')) return 'marketing';
+  
+  // Medical Services
+  if (key.includes('medical') || key.includes('doctor') || key.includes('physician') || key.includes('clinic')) return 'medical';
+  
+  // Dental Services
+  if (key.includes('dental') || key.includes('dentist') || key.includes('tooth') || key.includes('oral')) return 'dental';
+  
+  // Fitness Services
+  if (key.includes('fitness') || key.includes('gym') || key.includes('workout') || key.includes('training') || key.includes('exercise')) return 'fitness';
+  
+  // Tutoring Services
+  if (key.includes('tutor') || key.includes('academic') || key.includes('homework') || key.includes('study')) return 'tutoring';
+  
+  // Language Learning
+  if (key.includes('language') || key.includes('linguistic') || key.includes('translation')) return 'language';
+  
+  // Event Services
+  if (key.includes('event') || key.includes('wedding') || key.includes('party') || key.includes('celebration')) return 'event';
+  
+  // Photography Services
+  if (key.includes('photography') || key.includes('photographer') || key.includes('photo') || key.includes('camera')) return 'photography';
+  
+  // Entertainment Services
+  if (key.includes('entertainment') || key.includes('dj') || key.includes('music') || key.includes('performance')) return 'entertainment';
+  
+  // Financial Services
+  if (key.includes('financial') || key.includes('investment') || key.includes('retirement') || key.includes('wealth')) return 'financial';
+  
+  // Insurance Services
+  if (key.includes('insurance') || key.includes('coverage') || key.includes('policy') || key.includes('protection')) return 'insurance';
+  
+  // Default fallback
+  console.log('🔍 DEBUG mapCategoryToBusinessType returning: other (fallback)');
   return 'other';
 };
 
@@ -49,7 +145,6 @@ const ServiceProviderSignup = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    location: '',
     
     // Business details
     businessName: '',
@@ -76,17 +171,50 @@ const ServiceProviderSignup = () => {
     
     // Images
     profilePicture: null,
-    coverPhoto: null,
-    galleryImages: [],
+    coverPhotos: [],
     imagePreview: '',
-    coverPreview: '',
-    galleryPreviews: []
+    coverPreviews: []
   });
   
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [citySearchTerm, setCitySearchTerm] = useState('');
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [filteredCities, setFilteredCities] = useState(pakistaniCities);
+  const [isDropdownInteracting, setIsDropdownInteracting] = useState(false);
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const { user, userType } = useContext(AuthContext);
+
+  // City search functionality
+  const handleCitySearch = (searchTerm) => {
+    setCitySearchTerm(searchTerm);
+    const filtered = pakistaniCities.filter(city => 
+      city.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredCities(filtered);
+    setShowCityDropdown(true);
+  };
+
+  const selectCity = (city) => {
+    setFormData(prev => ({ ...prev, city }));
+    setCitySearchTerm(city);
+    setShowCityDropdown(false);
+  };
+
+  const handleCityInputFocus = () => {
+    setShowCityDropdown(true);
+    setFilteredCities(pakistaniCities);
+  };
+
+  const handleCityInputBlur = () => {
+    // Delay hiding dropdown to allow clicking on options (increased timeout for touchpad)
+    setTimeout(() => {
+      if (!isDropdownInteracting) {
+        setShowCityDropdown(false);
+      }
+    }, 300);
+  };
 
   const handleImageChange = (e) => {
     try {
@@ -139,52 +267,6 @@ const ServiceProviderSignup = () => {
 
   const handleCoverPhotoChange = (e) => {
     try {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      // Clear any previous errors
-      setError('');
-
-      // Validate file type
-      if (!file.type.match('image.*')) {
-        setError('Please select a valid image file (JPEG, PNG, etc.)');
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Cover photo size should be less than 5MB');
-        return;
-      }
-
-      const reader = new FileReader();
-      
-      reader.onload = (event) => {
-        try {
-          setFormData(prev => ({
-            ...prev,
-            coverPhoto: file,
-            coverPreview: event.target.result
-          }));
-        } catch (err) {
-          console.error('Error updating form data:', err);
-          setError('Failed to process the cover photo');
-        }
-      };
-      
-      reader.onerror = () => {
-        setError('Failed to read the cover photo file');
-      };
-      
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error('Error in handleCoverPhotoChange:', err);
-      setError('An error occurred while processing the cover photo');
-    }
-  };
-
-  const handleGalleryImageChange = (e) => {
-    try {
       const files = Array.from(e.target.files);
       if (files.length === 0) return;
 
@@ -192,8 +274,8 @@ const ServiceProviderSignup = () => {
       setError('');
 
       // Validate number of images
-      if (formData.galleryImages.length + files.length > 5) {
-        setError('You can only upload up to 5 gallery images');
+      if (formData.coverPhotos.length + files.length > 5) {
+        setError('You can only upload up to 5 photos');
         return;
       }
 
@@ -210,49 +292,49 @@ const ServiceProviderSignup = () => {
         }
       }
 
-      // Process each file
-      const newGalleryImages = [...formData.galleryImages];
-      const newGalleryPreviews = [...formData.galleryPreviews];
+      const newCoverPhotos = [...formData.coverPhotos];
+      const newCoverPreviews = [...formData.coverPreviews];
 
+      // Process each file
       files.forEach((file, index) => {
         const reader = new FileReader();
         
         reader.onload = (event) => {
           try {
-            newGalleryImages.push(file);
-            newGalleryPreviews.push(event.target.result);
+            newCoverPhotos.push(file);
+            newCoverPreviews.push(event.target.result);
             
-            // Update state after all files are processed
-            if (newGalleryImages.length === formData.galleryImages.length + files.length) {
+            // Update form data when all files are processed
+            if (newCoverPhotos.length === formData.coverPhotos.length + files.length) {
               setFormData(prev => ({
                 ...prev,
-                galleryImages: newGalleryImages,
-                galleryPreviews: newGalleryPreviews
+                coverPhotos: newCoverPhotos,
+                coverPreviews: newCoverPreviews
               }));
             }
           } catch (err) {
-            console.error('Error updating gallery data:', err);
-            setError('Failed to process gallery images');
+            console.error('Error updating cover photos data:', err);
+            setError('Failed to process cover photos');
           }
         };
         
         reader.onerror = () => {
-          setError('Failed to read gallery image files');
+          setError('Failed to read cover photo files');
         };
         
         reader.readAsDataURL(file);
       });
     } catch (err) {
-      console.error('Error in handleGalleryImageChange:', err);
-      setError('An error occurred while processing gallery images');
+      console.error('Error in handleCoverPhotoChange:', err);
+      setError('An error occurred while processing cover photos');
     }
   };
 
-  const removeGalleryImage = (index) => {
+  const removeCoverPhoto = (index) => {
     setFormData(prev => ({
       ...prev,
-      galleryImages: prev.galleryImages.filter((_, i) => i !== index),
-      galleryPreviews: prev.galleryPreviews.filter((_, i) => i !== index)
+      coverPhotos: prev.coverPhotos.filter((_, i) => i !== index),
+      coverPreviews: prev.coverPreviews.filter((_, i) => i !== index)
     }));
   };
 
@@ -302,9 +384,9 @@ const ServiceProviderSignup = () => {
           serviceDescription: '',
           pricing: {
             type: 'fixed',
-            amount: '',
+            amount: 0,
             currency: 'PKR',
-            unit: 'per service'
+            unit: undefined // Don't set unit for non-hourly services
           }
         }
       ]
@@ -330,6 +412,13 @@ const ServiceProviderSignup = () => {
         return false;
       } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
         setError('Please enter a valid email address');
+        return false;
+      }
+      
+      // Check if customer is trying to use their customer email for business registration
+      if (user && userType === 'customer' && user.email && 
+          formData.email.toLowerCase().trim() === user.email.toLowerCase().trim()) {
+        setError('Please use your business email address instead of your customer email. Use a different email for your business registration.');
         return false;
       }
       if (!formData.phone.trim()) {
@@ -365,7 +454,7 @@ const ServiceProviderSignup = () => {
         setError('Business address is required');
         return false;
       }
-      if (!formData.city.trim()) {
+      if (!citySearchTerm.trim()) {
         setError('City is required');
         return false;
       }
@@ -397,8 +486,13 @@ const ServiceProviderSignup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateStep()) return;
-    setIsSubmitting(true);
+    
+    // IMMEDIATELY clear any existing errors and set submitting state
     setError('');
+    setIsSuccess(false);
+    setIsSubmitting(true);
+    
+    console.log('🔍 Frontend: Starting registration - cleared all states');
 
     try {
       // Split full name into first/last
@@ -407,8 +501,12 @@ const ServiceProviderSignup = () => {
       const firstName = firstSpace === -1 ? trimmedName : trimmedName.slice(0, firstSpace);
       const lastName = firstSpace === -1 ? 'Provider' : trimmedName.slice(firstSpace + 1) || 'Provider';
 
-      const selectedCategory = serviceCategories.find(cat => cat.id === parseInt(formData.serviceCategory));
-      const businessType = mapCategoryToBusinessType(selectedCategory?.name);
+      const selectedCategory = formData.serviceCategory;
+      console.log('🔍 DEBUG: selectedCategory:', selectedCategory);
+      console.log('🔍 DEBUG: selectedCategory.name:', selectedCategory?.name);
+      console.log('🔍 DEBUG: selectedCategory.slug:', selectedCategory?.slug);
+      const businessType = selectedCategory ? mapCategoryToBusinessType(selectedCategory.name) : 'other';
+      console.log('🔍 DEBUG: mapped businessType:', businessType);
 
       // Convert images to base64 strings for backend storage
       const convertImageToBase64 = (file) => {
@@ -425,14 +523,11 @@ const ServiceProviderSignup = () => {
       };
 
       // Convert all images to base64
-      const [profilePictureBase64, coverPhotoBase64] = await Promise.all([
-        convertImageToBase64(formData.profilePicture),
-        convertImageToBase64(formData.coverPhoto)
-      ]);
+      const profilePictureBase64 = await convertImageToBase64(formData.profilePicture);
 
-      // Convert gallery images to base64
-      const galleryBase64 = await Promise.all(
-        formData.galleryImages.map(file => convertImageToBase64(file))
+      // Convert cover photos to base64
+      const coverPhotosBase64 = await Promise.all(
+        formData.coverPhotos.map(file => convertImageToBase64(file))
       );
 
       // Build payload that backend expects
@@ -444,15 +539,14 @@ const ServiceProviderSignup = () => {
         confirmPassword: formData.confirmPassword,
         phone: formData.phone.trim(),
         location: {
-          city: (formData.city || '').trim(),
-          area: (formData.location || '').trim() || undefined,
+          city: (citySearchTerm || '').trim(),
           address: (formData.address || '').trim() || undefined
         },
         businessName: formData.businessName.trim(),
         businessType,
         description: (formData.description && formData.description.trim().length >= 20)
           ? formData.description.trim()
-          : `Professional ${selectedCategory?.name || 'service'} provider in ${formData.city}`,
+          : `Professional ${selectedCategory?.name || 'service'} provider in ${citySearchTerm}`,
         businessContact: {
           phone: formData.phone.trim(),
           email: formData.email.trim().toLowerCase(),
@@ -460,7 +554,7 @@ const ServiceProviderSignup = () => {
         },
         businessLocation: {
           address: formData.address.trim(),
-          city: formData.city.trim()
+          city: citySearchTerm.trim()
         },
         businessHours: formData.businessHours,
         services: [
@@ -471,22 +565,78 @@ const ServiceProviderSignup = () => {
             currency: 'PKR'
           }
         ],
+        additionalServices: formData.additionalServices.filter(service => 
+          service.serviceTitle && service.serviceTitle.trim() && 
+          service.serviceDescription && service.serviceDescription.trim() &&
+          service.pricing && service.pricing.type &&
+          (service.pricing.type === 'negotiable' || 
+           (service.pricing.type === 'fixed' && service.pricing.amount > 0) ||
+           (service.pricing.type === 'hourly' && service.pricing.amount > 0 && service.pricing.unit))
+        ).map(service => {
+          const pricing = {
+            type: service.pricing.type,
+            currency: 'PKR'
+          };
+          
+          // Only add amount for fixed and hourly pricing
+          if (service.pricing.type !== 'negotiable') {
+            pricing.amount = service.pricing.amount;
+          }
+          
+          // Only add unit for hourly pricing
+          if (service.pricing.type === 'hourly') {
+            pricing.unit = service.pricing.unit;
+          }
+          
+          return {
+            serviceTitle: service.serviceTitle.trim(),
+            serviceDescription: service.serviceDescription.trim(),
+            pricing
+          };
+        }),
         images: {
           logo: profilePictureBase64,
-          cover: coverPhotoBase64,
-          gallery: galleryBase64.filter(img => img !== null)
+          cover: coverPhotosBase64.filter(img => img !== null)
         }
       };
+
+      // Debug logging
+      console.log('🔍 Frontend payload debug:');
+      console.log('📝 Form data additional services:', JSON.stringify(formData.additionalServices, null, 2));
+      console.log('📝 Additional services being sent:', JSON.stringify(payload.additionalServices, null, 2));
+      console.log('📝 Full payload:', JSON.stringify(payload, null, 2));
+
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       const response = await fetch('http://localhost:5000/api/auth/business/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
 
-      const data = await response.json();
+      clearTimeout(timeoutId);
+
+      console.log('🔍 Frontend: Registration response status:', response.status);
+      console.log('🔍 Frontend: Response headers:', response.headers);
+      console.log('🔍 Frontend: Response ok:', response.ok);
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('🔍 Frontend: Registration response data:', data);
+      } catch (jsonError) {
+        console.error('🔍 Frontend: JSON parsing error:', jsonError);
+        const textResponse = await response.text();
+        console.log('🔍 Frontend: Raw response text:', textResponse);
+        throw new Error('Invalid response format from server');
+      }
 
       if (!response.ok) {
+        console.log('🔍 Frontend: Registration failed with status:', response.status);
+        console.log('🔍 Frontend: Response not ok, data:', data);
         if (data && (data.errors || data.error)) {
           const msg = Array.isArray(data.errors) ? data.errors.join('\n') : (data.error || data.message);
           throw new Error(msg || 'Registration failed');
@@ -494,26 +644,133 @@ const ServiceProviderSignup = () => {
         throw new Error('Registration failed');
       }
 
-      // Show the success message from the backend
-      alert(data.message || 'Business registration successful! Please check your email for any next steps.');
-      navigate('/business-dashboard');
+      // SUCCESS! Set success state IMMEDIATELY and clear all errors
+      console.log('🔍 Frontend: SUCCESS! Setting success state immediately');
+      
+      // Force success state update
+      setError('');
+      setIsSuccess(true);
+      setIsSubmitting(false);
+      
+      // Persist success message
+      const successMsg = data.message || 'Thank you for registering your business with us! Please check your email to verify your account before you can login.';
+      sessionStorage.setItem('sp_signup_success', successMsg);
+      
+      console.log('🔍 Frontend: SUCCESS STATE SET - Registration completed successfully!');
+      console.log('🔍 Frontend: Success message:', successMsg);
+      
+      // Try navigation after a small delay
+      setTimeout(() => {
+        try {
+          navigate('/signup/success');
+        } catch (navError) {
+          console.log('🔍 Frontend: Navigation failed, success message will show');
+        }
+      }, 200);
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err.message || 'Failed to register. Please check your information and try again.');
+      
+      console.log('🔍 Frontend: Error caught:', err.message);
+      
+      // Only set error if we're not already in success state
+      if (!isSuccess) {
+        console.log('🔍 Frontend: Setting error state');
+        if (err.name === 'AbortError') {
+          setError('Registration request timed out. Please check your connection and try again.');
+        } else if (err.message.includes('Invalid response format')) {
+          setError('Server returned an invalid response. Please try again.');
+        } else if (err.message.includes('Failed to fetch')) {
+          setError('Unable to connect to server. Please check your internet connection.');
+        } else if (err.message.includes('Email already registered')) {
+          setError('Email already registered. Please use a different email or try logging in.');
+        } else {
+          setError(err.message || 'Failed to register. Please check your information and try again.');
+        }
+      } else {
+        console.log('🔍 Frontend: Error occurred but success state is already set, ignoring error');
+      }
     } finally {
-      setIsSubmitting(false);
+      if (!isSuccess) {
+        setIsSubmitting(false);
+      }
     }
   };
+
+  // Debug logging
+  console.log('🔍 Frontend: Render - isSuccess:', isSuccess, 'error:', error);
 
   return (
     <div className="signup-container">
       <div className="signup-card">
         <div className="signup-header">
           <h2>Become a Service Provider</h2>
-          {error && (
+          {error && !isSuccess && (
             <div className="error-message">
               <i className="fas fa-exclamation-circle"></i>
               <span>{error}</span>
+              {error.includes('Email already registered') && (
+                <div style={{ marginTop: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <a href="/login" style={{ color: '#4CAF50', textDecoration: 'underline' }}>
+                    Login instead
+                  </a>
+                  <span style={{ color: '#666' }}>or</span>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setError('');
+                      setFormData(prev => ({ ...prev, email: '' }));
+                      document.querySelector('input[name="email"]')?.focus();
+                    }}
+                    style={{ 
+                      background: 'transparent', 
+                      border: '1px solid #4CAF50', 
+                      color: '#4CAF50', 
+                      padding: '5px 10px', 
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Use different email
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {(isSuccess || sessionStorage.getItem('sp_signup_success')) && (
+            <div className="success-message" style={{
+              background: '#4CAF50',
+              color: 'white',
+              padding: '15px 20px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '18px' }}>
+                <i className="fas fa-check-circle" style={{ fontSize: '24px' }}></i>
+                <span>🎉 Registration Successful! 🎉</span>
+              </div>
+              <div style={{ textAlign: 'center', fontSize: '14px', fontWeight: 'normal' }}>
+                Your business has been registered successfully!<br/>
+                Please check your email to verify your account.
+              </div>
+              <button 
+                onClick={() => navigate('/signup/success')}
+                style={{
+                  background: 'white',
+                  color: '#4CAF50',
+                  border: '2px solid white',
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Continue to Success Page →
+              </button>
             </div>
           )}
           <div className="progress-bar">
@@ -553,9 +810,14 @@ const ServiceProviderSignup = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="Enter your email"
+                  placeholder={user && userType === 'customer' ? "Enter your business email (different from customer email)" : "Enter your email"}
                   required
                 />
+                {user && userType === 'customer' && (
+                  <small className="form-hint">
+                    Please use a different email address for your business registration, not your customer account email.
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>Phone Number *</label>
@@ -564,18 +826,8 @@ const ServiceProviderSignup = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="Enter your phone number"
+                  placeholder="+92 300 1234567"
                   required
-                />
-              </div>
-              <div className="form-group">
-                <label>Location</label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  placeholder="Your location (e.g., City, Country)"
                 />
               </div>
               <div className="form-group">
@@ -623,21 +875,12 @@ const ServiceProviderSignup = () => {
                 />
               </div>
               <div className="form-group">
-                <label>Service Category *</label>
-                <select
-                  name="serviceCategory"
-                  value={formData.serviceCategory}
-                  onChange={handleChange}
-                  className="form-control"
-                  required
-                >
-                  <option value="">Select a category</option>
-                  {serviceCategories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <ServiceCategorySelector
+                  selectedCategory={formData.serviceCategory}
+                  onCategorySelect={(category) => setFormData(prev => ({ ...prev, serviceCategory: category }))}
+                  placeholder="Select a service category"
+                  required={true}
+                />
               </div>
               <div className="form-group">
                 <label>Business Address *</label>
@@ -652,14 +895,46 @@ const ServiceProviderSignup = () => {
               </div>
               <div className="form-group">
                 <label>City *</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="City"
-                  required
-                />
+                <div className="city-dropdown-container">
+                  <input
+                    type="text"
+                    name="city"
+                    value={citySearchTerm}
+                    onChange={(e) => handleCitySearch(e.target.value)}
+                    onFocus={handleCityInputFocus}
+                    onBlur={handleCityInputBlur}
+                    placeholder="Search and select your city"
+                    required
+                    className="city-search-input"
+                  />
+                  {showCityDropdown && (
+                    <div className="city-dropdown">
+                      {filteredCities.length > 0 ? (
+                        filteredCities.map((city, index) => (
+                          <div
+                            key={index}
+                            className="city-option"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setIsDropdownInteracting(true);
+                              selectCity(city);
+                              setTimeout(() => setIsDropdownInteracting(false), 100);
+                            }}
+                            onClick={() => selectCity(city)}
+                            onMouseEnter={() => setIsDropdownInteracting(true)}
+                            onMouseLeave={() => setIsDropdownInteracting(false)}
+                          >
+                            {city}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="city-option no-results">
+                          No cities found
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="form-group">
@@ -773,10 +1048,20 @@ const ServiceProviderSignup = () => {
                       <div className="pricing-section">
                         <select
                           value={service.pricing.type}
-                          onChange={(e) => handleAdditionalServiceChange(index, 'pricing', {
-                            ...service.pricing,
-                            type: e.target.value
-                          })}
+                          onChange={(e) => {
+                            const newType = e.target.value;
+                            const newPricing = {
+                              ...service.pricing,
+                              type: newType
+                            };
+                            
+                            // Auto-set unit for hourly pricing
+                            if (newType === 'hourly' && !service.pricing.unit) {
+                              newPricing.unit = 'per hour';
+                            }
+                            
+                            handleAdditionalServiceChange(index, 'pricing', newPricing);
+                          }}
                           className="pricing-type-select"
                         >
                           <option value="fixed">Fixed Price</option>
@@ -792,7 +1077,7 @@ const ServiceProviderSignup = () => {
                               value={service.pricing.amount}
                               onChange={(e) => handleAdditionalServiceChange(index, 'pricing', {
                                 ...service.pricing,
-                                amount: e.target.value
+                                amount: parseFloat(e.target.value) || 0
                               })}
                               className="price-input"
                               min="0"
@@ -800,7 +1085,7 @@ const ServiceProviderSignup = () => {
                             <span className="currency-label">PKR</span>
                             {service.pricing.type === 'hourly' && (
                               <select
-                                value={service.pricing.unit}
+                                value={service.pricing.unit || 'per hour'}
                                 onChange={(e) => handleAdditionalServiceChange(index, 'pricing', {
                                   ...service.pricing,
                                   unit: e.target.value
@@ -853,57 +1138,33 @@ const ServiceProviderSignup = () => {
               </div>
 
               <div className="form-group">
-                <label>Cover Photo (Optional)</label>
-                <div className="image-upload">
+                <label>Photos (Optional - Up to 5)</label>
+                <div className="gallery-upload">
                   <input
                     type="file"
                     id="coverPhoto"
                     name="coverPhoto"
                     accept="image/*"
+                    multiple
                     onChange={handleCoverPhotoChange}
                     className="file-input"
                   />
                   <label htmlFor="coverPhoto" className="file-label">
-                    {formData.coverPreview ? (
-                      <img src={formData.coverPreview} alt="Cover Preview" className="image-preview" />
-                    ) : (
-                      <div className="upload-placeholder">
-                        <i className="fas fa-image"></i>
-                        <span>Upload Cover Photo</span>
-                      </div>
-                    )}
-                  </label>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Gallery Images (Optional - Up to 5)</label>
-                <div className="gallery-upload">
-                  <input
-                    type="file"
-                    id="galleryImages"
-                    name="galleryImages"
-                    accept="image/*"
-                    multiple
-                    onChange={handleGalleryImageChange}
-                    className="file-input"
-                  />
-                  <label htmlFor="galleryImages" className="file-label">
                     <div className="upload-placeholder">
                       <i className="fas fa-images"></i>
-                      <span>Upload Gallery Images</span>
+                      <span>Upload Photos</span>
                       <small>Select up to 5 images</small>
                     </div>
                   </label>
                   
-                  {formData.galleryPreviews.length > 0 && (
+                  {formData.coverPreviews && formData.coverPreviews.length > 0 && (
                     <div className="gallery-previews">
-                      {formData.galleryPreviews.map((preview, index) => (
+                      {formData.coverPreviews.map((preview, index) => (
                         <div key={index} className="gallery-preview-item">
-                          <img src={preview} alt={`Gallery ${index + 1}`} />
+                          <img src={preview} alt={`Photo ${index + 1}`} />
                           <button
                             type="button"
-                            onClick={() => removeGalleryImage(index)}
+                            onClick={() => removeCoverPhoto(index)}
                             className="remove-gallery-image"
                             aria-label="Remove image"
                           >
@@ -943,10 +1204,6 @@ const ServiceProviderSignup = () => {
                   <span className="review-label">Phone:</span>
                   <span className="review-value">{formData.phone}</span>
                 </div>
-                <div className="review-item">
-                  <span className="review-label">Location:</span>
-                  <span className="review-value">{formData.location || 'Not specified'}</span>
-                </div>
                 
                 <h3>Business Information</h3>
                 <div className="review-item">
@@ -956,12 +1213,12 @@ const ServiceProviderSignup = () => {
                 <div className="review-item">
                   <span className="review-label">Service Category:</span>
                   <span className="review-value">
-                    {serviceCategories.find(cat => cat.id === parseInt(formData.serviceCategory))?.name || 'Not specified'}
+                    {formData.serviceCategory?.name || 'Not specified'}
                   </span>
                 </div>
                 <div className="review-item">
                   <span className="review-label">Address:</span>
-                  <span className="review-value">{formData.address}, {formData.city}</span>
+                  <span className="review-value">{formData.address}, {citySearchTerm}</span>
                 </div>
                 <div className="review-item">
                   <span className="review-label">Website:</span>
@@ -984,17 +1241,11 @@ const ServiceProviderSignup = () => {
                   </span>
                 </div>
                 <div className="review-item">
-                  <span className="review-label">Cover Photo:</span>
+                  <span className="review-label">Photos:</span>
                   <span className="review-value">
-                    {formData.coverPhoto ? '✓ Uploaded' : 'Not uploaded'}
-                  </span>
-                </div>
-                <div className="review-item">
-                  <span className="review-label">Gallery Images:</span>
-                  <span className="review-value">
-                    {formData.galleryImages.length > 0 
-                      ? `✓ ${formData.galleryImages.length} image(s) uploaded` 
-                      : 'No gallery images uploaded'}
+                    {formData.coverPhotos.length > 0 
+                      ? `✓ ${formData.coverPhotos.length} photo(s) uploaded` 
+                      : 'No photos uploaded'}
                   </span>
                 </div>
                 

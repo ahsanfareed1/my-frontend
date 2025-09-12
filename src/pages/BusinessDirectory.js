@@ -1,22 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import BusinessAvatar from '../components/BusinessAvatar';
 
 const API_BASE = 'http://localhost:5000/api';
 
 const BusinessCard = ({ business, onOpen }) => {
   const primaryService = business.services?.[0]?.name || business.businessType;
   return (
-    <div className="provider-card" onClick={() => onOpen(business._id)}>
+    <div className="provider-card" onClick={() => onOpen(business)}>
       <div className="provider-card-content">
         <div className="provider-card-header">
           <div className="provider-avatar">
             <div className="avatar-container">
-              {business.images?.logo ? (
-                <img className="provider-image" src={business.images.logo} alt={business.businessName} />
-              ) : null}
-              {!business.images?.logo && (
-                <span className="avatar-initials">{business.businessName?.charAt(0)?.toUpperCase() || 'B'}</span>
-              )}
+              <BusinessAvatar
+                businessName={business.businessName}
+                imageUrl={business.images?.logo}
+                size="medium"
+                className="provider-image"
+              />
             </div>
           </div>
           <div className="provider-info">
@@ -32,7 +33,7 @@ const BusinessCard = ({ business, onOpen }) => {
           {business.description?.slice(0, 140) || 'No description provided.'}
         </div>
         <div className="action-buttons">
-          <button className="action-button primary-button" onClick={(e) => { e.stopPropagation(); onOpen(business._id); }}>
+          <button className="action-button primary-button" onClick={(e) => { e.stopPropagation(); onOpen(business); }}>
             <i className="fas fa-user"></i>
             View Profile
           </button>
@@ -82,7 +83,31 @@ const BusinessDirectory = () => {
 
   useEffect(() => { fetchBusinesses(); /* eslint-disable-next-line */ }, [city, type, search]);
 
-  const onOpenProfile = (id) => navigate(`/business/${id}`);
+  const onOpenProfile = (business) => {
+    // Generate slug from business name
+    const generateSlug = (title) => {
+      if (!title) return '';
+      return title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+        .trim('-'); // Remove leading/trailing hyphens
+    };
+    
+    // Try multiple possible fields for category
+    let category = business.businessType || 
+                   business.category || 
+                   business.serviceType || 
+                   (business.services && business.services[0] && business.services[0].name) ||
+                   'other';
+    
+    // Clean up the category
+    category = category.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    const slug = generateSlug(business.businessName);
+    navigate(`/business/${category}/${slug}`);
+  };
 
   return (
     <div className="services-page">

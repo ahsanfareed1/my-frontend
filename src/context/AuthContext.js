@@ -159,19 +159,58 @@ export const AuthProvider = ({ children }) => {
 
   // Update user profile
   const updateProfile = async (profileData) => {
+    console.log('🔍 Frontend: Calling updateProfile API');
+    console.log('🔍 Frontend: URL:', 'http://localhost:5000/api/users/profile');
+    console.log('🔍 Frontend: Profile data:', profileData);
+    console.log('🔍 Frontend: Token present:', !!localStorage.getItem('token'));
+    
     try {
       const response = await axios.put('http://localhost:5000/api/users/profile', profileData, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       
+      console.log('✅ Frontend: Profile update successful:', response.data);
+      
       const updatedUser = response.data.user;
       setUser(updatedUser);
       return { success: true, user: updatedUser };
     } catch (error) {
-      console.error('Profile update error:', error.response?.data || error.message);
+      console.error('❌ Frontend: Profile update error:', error);
+      console.error('❌ Frontend: Error response:', error.response?.data);
+      console.error('❌ Frontend: Error status:', error.response?.status);
+      
       return {
         success: false,
         message: error.response?.data?.message || 'Profile update failed'
+      };
+    }
+  };
+
+  // Update user profile picture
+  const updateProfilePicture = async (profilePicture) => {
+    console.log('🔍 Frontend: Calling updateProfilePicture API');
+    console.log('🔍 Frontend: URL:', 'http://localhost:5000/api/users/profile-picture');
+    console.log('🔍 Frontend: Token present:', !!localStorage.getItem('token'));
+    
+    try {
+      const response = await axios.put('http://localhost:5000/api/users/profile-picture', 
+        { profilePicture }, 
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      
+      console.log('✅ Frontend: Profile picture update successful:', response.data);
+      
+      const updatedUser = response.data.user;
+      setUser(updatedUser);
+      return { success: true, user: updatedUser };
+    } catch (error) {
+      console.error('❌ Frontend: Profile picture update error:', error);
+      console.error('❌ Frontend: Error response:', error.response?.data);
+      console.error('❌ Frontend: Error status:', error.response?.status);
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Profile picture update failed'
       };
     }
   };
@@ -185,6 +224,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     register,
     updateProfile,
+    updateProfilePicture,
     setUser
   };
 

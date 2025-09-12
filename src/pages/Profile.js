@@ -1,26 +1,22 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEdit, FaSave, FaTimes, FaCamera, FaStar, FaTrash, FaEye } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEdit, FaSave, FaTimes, FaCamera } from 'react-icons/fa';
+import BusinessAvatar from '../components/BusinessAvatar';
 import './Profile.css';
 
 function Profile() {
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, updateProfilePicture, logout } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [userReviews, setUserReviews] = useState([]);
-  const [loadingReviews, setLoadingReviews] = useState(true);
-  const [editingReview, setEditingReview] = useState(null);
   
-  // Debug logging
-  useEffect(() => {
-    console.log('Profile component - User state:', user);
-    console.log('Profile component - Token in localStorage:', localStorage.getItem('token'));
-    console.log('Profile component - User type:', typeof user);
-    console.log('Profile component - User keys:', user ? Object.keys(user) : 'No user object');
-  }, [user]);
+  // Profile picture state
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [previewImage, setPreviewImage] = useState('');
+  
+  // yahan debug logs htaye gaye hain
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -34,10 +30,9 @@ function Profile() {
     postalCode: ''
   });
   
-  // Initialize form data when user data is available
+  // user data milte hi form prefill krne k liye
   useEffect(() => {
     if (user && user.firstName) {
-      console.log('Profile component - Setting form data with user:', user);
       setFormData({
         firstName: user.firstName || '',
         lastName: user.lastName || '',
@@ -49,38 +44,17 @@ function Profile() {
         country: user.location?.country || 'Pakistan',
         postalCode: user.location?.postalCode || ''
       });
-    }
-  }, [user]);
-
-  // Fetch user reviews
-  useEffect(() => {
-    if (user) {
-      fetchUserReviews();
-    }
-  }, [user]);
-
-  const fetchUserReviews = async () => {
-    try {
-      setLoadingReviews(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/reviews?reviewer=${user._id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
       
-      if (response.ok) {
-        const data = await response.json();
-        setUserReviews(data.reviews || []);
-      } else {
-        console.error('Failed to fetch reviews');
+      // Set preview image if user has a profile picture
+      if (user.profilePicture) {
+        setPreviewImage(user.profilePicture);
       }
-    } catch (error) {
-      console.error('Error fetching reviews:', error);
-    } finally {
-      setLoadingReviews(false);
     }
-  };
+  }, [user]);
+
+
+
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -90,14 +64,49 @@ function Profile() {
     }));
   };
 
+  // profile picture select krne k liye
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setMessage({ type: 'error', text: 'Image size must be less than 5MB' });
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setMessage({ type: 'error', text: 'Please select a valid image file' });
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePicture(file);
+        setPreviewImage(reader.result);
+        setMessage({ type: '', text: '' });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // selected profile picture hatane k liye
+  const removeImage = () => {
+    setProfilePicture(null);
+    setPreviewImage(user.profilePicture || '');
+    setMessage({ type: '', text: '' });
+  };
+
   const handleEdit = () => {
     setIsEditing(true);
     setMessage({ type: '', text: '' });
+    // current profile picture ko preview me set krne k liye
+    setPreviewImage(user.profilePicture || '');
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset form data to original user data
+    // form ko original user data pe reset krne k liye
     setFormData({
       firstName: user.firstName || '',
       lastName: user.lastName || '',
@@ -109,6 +118,9 @@ function Profile() {
       country: user.location?.country || 'Pakistan',
       postalCode: user.location?.postalCode || ''
     });
+    // profile picture state reset krne k liye
+    setProfilePicture(null);
+    setPreviewImage(user.profilePicture || '');
     setMessage({ type: '', text: '' });
   };
 
@@ -117,6 +129,16 @@ function Profile() {
     setMessage({ type: '', text: '' });
 
     try {
+      // agr new profile picture ho to pehle upload kr dein
+      if (profilePicture) {
+        const pictureResult = await updateProfilePicture(previewImage);
+        if (!pictureResult.success) {
+          setMessage({ type: 'error', text: pictureResult.message || 'Failed to update profile picture' });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const profileData = {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
@@ -135,12 +157,15 @@ function Profile() {
       if (result.success) {
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
         setIsEditing(false);
+        // profile picture state reset krne k liye
+        setProfilePicture(null);
+        setPreviewImage('');
         setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       } else {
         setMessage({ type: 'error', text: result.message || 'Failed to update profile' });
       }
     } catch (error) {
-      console.error('Profile update error:', error);
+      // profile update error pe message
       setMessage({ type: 'error', text: 'An error occurred while updating profile' });
     } finally {
       setIsLoading(false);
@@ -152,66 +177,7 @@ function Profile() {
     navigate('/');
   };
 
-  const handleEditReview = (review) => {
-    setEditingReview(review);
-  };
 
-  const handleCancelEditReview = () => {
-    setEditingReview(null);
-  };
-
-  const handleSaveReview = async (reviewId, updatedData) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/reviews/${reviewId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedData)
-      });
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Review updated successfully!' });
-        setEditingReview(null);
-        fetchUserReviews(); // Refresh reviews
-        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-      } else {
-        const errorData = await response.json();
-        setMessage({ type: 'error', text: errorData.message || 'Failed to update review' });
-      }
-    } catch (error) {
-      console.error('Review update error:', error);
-      setMessage({ type: 'error', text: 'An error occurred while updating review' });
-    }
-  };
-
-  const handleDeleteReview = async (reviewId) => {
-    if (window.confirm('Are you sure you want to delete this review?')) {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/reviews/${reviewId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          setMessage({ type: 'success', text: 'Review deleted successfully!' });
-          fetchUserReviews(); // Refresh reviews
-          setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-        } else {
-          const errorData = await response.json();
-          setMessage({ type: 'error', text: errorData.message || 'Failed to delete review' });
-        }
-      } catch (error) {
-        console.error('Review deletion error:', error);
-        setMessage({ type: 'error', text: 'An error occurred while deleting review' });
-      }
-    }
-  };
 
   if (!user) {
     return (
@@ -232,7 +198,7 @@ function Profile() {
     );
   }
   
-  // Fallback display if user object is incomplete
+  // agr user object incomplete ho to fallback dikhane k liye
   if (!user.firstName || !user.email) {
     return (
       <div className="profile-container">
@@ -240,14 +206,7 @@ function Profile() {
           <div className="profile-loading">
             <h2>Profile Data Incomplete</h2>
             <p>Some profile information is missing. Please try logging in again.</p>
-            <div className="debug-info">
-              <p><strong>User object received:</strong></p>
-              <pre>{JSON.stringify(user, null, 2)}</pre>
-              <p><strong>User type:</strong> {typeof user}</p>
-              <p><strong>User keys:</strong> {user ? Object.keys(user).join(', ') : 'No user object'}</p>
-              <button onClick={() => navigate('/login')}>Go to Login</button>
-              <button onClick={() => window.location.reload()}>Reload Page</button>
-            </div>
+            
           </div>
         </div>
       </div>
@@ -256,26 +215,61 @@ function Profile() {
 
   return (
     <div className="profile-container">
-      <div className="profile-card">
       <div className="profile-header">
         <div className="profile-avatar">
-            {user.profilePicture ? (
-              <img src={user.profilePicture} alt="Profile" className="avatar-img" />
-          ) : (
-            <FaUser className="avatar-icon" />
-          )}
-            {isEditing && (
-              <button className="avatar-edit-btn">
-            <FaCamera />
+          <BusinessAvatar
+            businessName={`${user.firstName} ${user.lastName}`}
+            imageUrl={previewImage || user.profilePicture}
+            size="large"
+            className="avatar-img"
+          />
+          {isEditing && (
+            <div className="avatar-edit-container">
+              <button 
+                type="button" 
+                className="avatar-edit-btn"
+                onClick={() => document.getElementById('profilePictureInput').click()}
+              >
+                <FaCamera />
               </button>
-            )}
-          </div>
-          <div className="profile-info">
-            <h2>{user.firstName} {user.lastName}</h2>
-            <p className="user-email">{user.email}</p>
-            <p className="user-type">Customer Account</p>
-          </div>
-          <div className="profile-actions">
+              <input
+                type="file"
+                id="profilePictureInput"
+                accept="image/*"
+                onChange={handleImageChange}
+                style={{ display: 'none' }}
+              />
+            </div>
+          )}
+          
+          {/* Show image preview and remove button when editing and image is selected */}
+          {isEditing && profilePicture && (
+            <div className="avatar-preview-overlay">
+              <button 
+                type="button" 
+                className="avatar-remove-btn"
+                onClick={removeImage}
+              >
+                <FaTimes />
+              </button>
+            </div>
+          )}
+        </div>
+        
+        <div className="profile-info">
+          <h2>{user.firstName} {user.lastName}</h2>
+          <p className="user-email">{user.email}</p>
+          <p className="user-type">Customer Account</p>
+          
+          {/* Show image hint when editing and image is selected */}
+          {isEditing && profilePicture && (
+            <div className="image-upload-hint">
+              <p>New profile picture selected. Click "Save Changes" to update.</p>
+              <p className="image-hint-small">Max size: 5MB, Recommended: 500x500px</p>
+            </div>
+          )}
+        </div>
+        <div className="profile-actions">
             {!isEditing ? (
               <button onClick={handleEdit} className="edit-btn">
                 <FaEdit /> Edit Profile
@@ -479,74 +473,7 @@ function Profile() {
             </div>
         </div>
         
-          {/* User Reviews Section */}
-          <div className="profile-section">
-            <h3>My Reviews</h3>
-            {loadingReviews ? (
-              <div className="loading-reviews">Loading your reviews...</div>
-            ) : userReviews.length > 0 ? (
-              <div className="reviews-container">
-                {userReviews.map((review) => (
-                  <div key={review._id} className="review-item">
-                    {editingReview && editingReview._id === review._id ? (
-                      <ReviewEditForm
-                        review={review}
-                        onSave={handleSaveReview}
-                        onCancel={handleCancelEditReview}
-                      />
-                    ) : (
-                      <div className="review-content">
-                        <div className="review-header">
-                          <div className="review-business">
-                            <h4>{review.business?.businessName || 'Business'}</h4>
-                            <div className="review-rating">
-                              {[...Array(5)].map((_, i) => (
-                                <FaStar
-                                  key={i}
-                                  className={`star ${i < review.rating ? 'filled' : ''}`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          <div className="review-actions">
-              <button 
-                              onClick={() => handleEditReview(review)}
-                              className="review-edit-btn"
-              >
-                              <FaEdit /> Edit
-              </button>
-              <button 
-                              onClick={() => handleDeleteReview(review._id)}
-                              className="review-delete-btn"
-              >
-                              <FaTrash /> Delete
-              </button>
-                          </div>
-                        </div>
-                        <div className="review-details">
-                          <p className="review-title">{review.title}</p>
-                          <p className="review-comment">{review.comment}</p>
-                          <p className="review-date">
-                            {new Date(review.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-          )}
-        </div>
-                ))}
-            </div>
-          ) : (
-              <div className="no-reviews">
-                <p>You haven't written any reviews yet.</p>
-                <button 
-                  onClick={() => navigate('/services')} 
-                  className="browse-services-btn"
-                >
-                  Browse Services
-                </button>
-              </div>
-          )}
-        </div>
+
 
         <div className="profile-section">
             <h3>Account Actions</h3>
@@ -557,85 +484,10 @@ function Profile() {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }
 
-// Review Edit Form Component
-function ReviewEditForm({ review, onSave, onCancel }) {
-  const [editData, setEditData] = useState({
-    rating: review.rating,
-    title: review.title || '',
-    comment: review.comment
-  });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setEditData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(review._id, editData);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="review-edit-form">
-      <div className="form-group">
-        <label>Rating</label>
-        <select
-          name="rating"
-          value={editData.rating}
-          onChange={handleChange}
-          required
-        >
-          <option value="1">1 Star</option>
-          <option value="2">2 Stars</option>
-          <option value="3">3 Stars</option>
-          <option value="4">4 Stars</option>
-          <option value="5">5 Stars</option>
-        </select>
-      </div>
-      
-      <div className="form-group">
-        <label>Title</label>
-        <input
-          type="text"
-          name="title"
-          value={editData.title}
-          onChange={handleChange}
-          placeholder="Review title"
-          maxLength="100"
-        />
-      </div>
-      
-      <div className="form-group">
-        <label>Comment</label>
-        <textarea
-          name="comment"
-          value={editData.comment}
-          onChange={handleChange}
-          placeholder="Your review comment"
-          rows="4"
-          required
-          maxLength="1000"
-        />
-      </div>
-      
-      <div className="review-edit-actions">
-        <button type="submit" className="save-review-btn">
-          <FaSave /> Save Review
-        </button>
-        <button type="button" onClick={onCancel} className="cancel-review-btn">
-          <FaTimes /> Cancel
-        </button>
-      </div>
-    </form>
-  );
-}
 
 export default Profile;

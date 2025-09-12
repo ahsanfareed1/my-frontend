@@ -10,14 +10,14 @@ const BusinessDropdown = ({ isAuthenticated, user, onLogout, isMobile = false, c
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-  const { user: authUser } = useContext(AuthContext);
+  const { user: authUser, userType } = useContext(AuthContext);
   const [hasBusiness, setHasBusiness] = useState(false);
 
   useEffect(() => {
     const checkBusiness = () => {
       const currentUser = user || authUser;
       if (isAuthenticated && currentUser) {
-        // Check if user has a business
+        // we are Checking if user has a business - validation 
         const providers = JSON.parse(localStorage.getItem('serviceProviders') || '[]');
         const userBusiness = providers.find(p => p.userId === currentUser.id);
         setHasBusiness(!!userBusiness);
@@ -40,13 +40,11 @@ const BusinessDropdown = ({ isAuthenticated, user, onLogout, isMobile = false, c
     if (isMobile && closeMobileMenu) {
       closeMobileMenu();
     }
-    // Use a small timeout to ensure the menu closes before navigation
     setTimeout(() => {
       navigate(path);
     }, 100);
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -54,29 +52,23 @@ const BusinessDropdown = ({ isAuthenticated, user, onLogout, isMobile = false, c
       }
     };
 
-    // Close mobile menu when navigating away
     const unlisten = () => {
       if (isMobile && closeMobileMenu) {
         closeMobileMenu();
       }
     };
 
-    // Add event listener for navigation
     const unlistenToNavigation = window.addEventListener('popstate', unlisten);
-
     return () => {
       window.removeEventListener('popstate', unlisten);
     };
 
-    // Add event listener
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      // Clean up
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  // Render different button styles for mobile and desktop
   const renderButton = () => {
     const buttonContent = (
       <>
@@ -113,7 +105,7 @@ const BusinessDropdown = ({ isAuthenticated, user, onLogout, isMobile = false, c
     );
   };
 
-  // For mobile, we always want to show the dropdown content when the button is clicked
+  // For mobile dropdown, we always want to show the dropdown content when the button is clicked
   const showDropdown = isMobile ? isOpen : isOpen;
 
   return (
@@ -124,52 +116,85 @@ const BusinessDropdown = ({ isAuthenticated, user, onLogout, isMobile = false, c
         <div className={`business-dropdown-menu ${isMobile ? 'mobile' : ''}`}>
           {isAuthenticated ? (
             <>
-              {hasBusiness ? (
-                <>
-                  <button 
-                    className="dropdown-item"
-                    onClick={() => handleItemClick('/business/dashboard')}
-                  >
-                    <MdDashboard className="dropdown-icon" />
-                    Business Dashboard
-                  </button>
-                  <button 
-                    className="dropdown-item"
-                    onClick={() => handleItemClick('/business/profile')}
-                  >
-                    <FaStore className="dropdown-icon" />
-                    My Business Profile
-                  </button>
-                </>
-              ) : (
-                <Link 
-                  to="/service-provider-signup"
-                  className="dropdown-item"
-                  onClick={closeDropdown}
-                >
-                  <IoBusiness className="dropdown-icon" />
-                  Register Your Business
-                </Link>
-              )}
-              <div className="dropdown-divider"></div>
-              <button 
-                className="dropdown-item"
-                onClick={() => {
-                  closeDropdown();
-                  if (onLogout) {
-                    onLogout();
-                  }
-                  // Clear user session
-                  localStorage.removeItem('currentUser');
-                  // Redirect to home page
-                  navigate('/');
-                  // Reload the page to update the UI
-                  window.location.reload();
-                }}
-              >
-                  <FaSignOutAlt className="dropdown-icon" />
-                Logout
-              </button>
+              {(() => {
+                const currentUser = user || authUser;
+                const isCustomer = userType === 'customer' || (currentUser && currentUser.userType === 'customer');
+                
+                if (isCustomer) {
+                  return (
+                    <Link 
+                      to="/service-provider-signup"
+                      className="dropdown-item"
+                      onClick={closeDropdown}
+                    >
+                      <IoBusiness className="dropdown-icon" />
+                      Register Your Business
+                    </Link>
+                  );
+                } else {
+                  return hasBusiness ? (
+                    <>
+                      <button 
+                        className="dropdown-item"
+                        onClick={() => handleItemClick('/business/dashboard')}
+                      >
+                        <MdDashboard className="dropdown-icon" />
+                        Business Dashboard
+                      </button>
+                      <button 
+                        className="dropdown-item"
+                        onClick={() => handleItemClick('/business/profile')}
+                      >
+                        <FaStore className="dropdown-icon" />
+                        My Business Profile
+                      </button>
+                      <div className="dropdown-divider"></div>
+                      <button 
+                        className="dropdown-item"
+                        onClick={() => {
+                          closeDropdown();
+                          if (onLogout) {
+                            onLogout();
+                          }
+                          localStorage.removeItem('currentUser');
+                          navigate('/');
+                          window.location.reload();
+                        }}
+                      >
+                          <FaSignOutAlt className="dropdown-icon" />
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link 
+                        to="/service-provider-signup"
+                        className="dropdown-item"
+                        onClick={closeDropdown}
+                      >
+                        <IoBusiness className="dropdown-icon" />
+                        Register Your Business
+                      </Link>
+                      <div className="dropdown-divider"></div>
+                      <button 
+                        className="dropdown-item"
+                        onClick={() => {
+                          closeDropdown();
+                          if (onLogout) {
+                            onLogout();
+                          }
+                          localStorage.removeItem('currentUser');
+                          navigate('/');
+                          window.location.reload();
+                        }}
+                      >
+                          <FaSignOutAlt className="dropdown-icon" />
+                        Logout
+                      </button>
+                    </>
+                  );
+                }
+              })()}
             </>
           ) : (
             <>

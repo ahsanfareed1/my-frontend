@@ -104,6 +104,7 @@ const AdminLogin = () => {
           <p className="admin-login-note">
             This area is restricted to authorized administrators only.
           </p>
+
         </div>
       </div>
     </div>

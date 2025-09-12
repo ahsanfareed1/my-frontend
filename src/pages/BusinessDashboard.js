@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -24,10 +24,13 @@ import {
   FaTrash,
   FaPlus,
   FaEye,
-  FaEyeSlash
+  FaEyeSlash,
+  FaComments
 } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaImage } from 'react-icons/fa';
 import { BsGraphUp } from 'react-icons/bs';
 import { MdOutlineRateReview, MdBusiness } from 'react-icons/md';
+import BusinessMessagingDashboard from '../components/BusinessMessagingDashboard';
 import './BusinessDashboard.css';
 
 const BusinessDashboard = () => {
@@ -35,6 +38,7 @@ const BusinessDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [autoCollapseSidebar] = useState(true); // hover-to-expand behavior
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Toggle mobile menu
@@ -76,9 +80,16 @@ const BusinessDashboard = () => {
   const [bizSuccess, setBizSuccess] = useState('');
   const [reviews, setReviews] = useState({ items: [], loading: false, error: '' });
   const [isEditing, setIsEditing] = useState(false);
-  const [imagePreviews, setImagePreviews] = useState({ logo: '', cover: '', gallery: [] });
+  const [imagePreviews, setImagePreviews] = useState({ logo: '', cover: [] });
   const [showBusinessHours, setShowBusinessHours] = useState(false);
   const [imageProcessing, setImageProcessing] = useState(false);
+  const formRef = useRef(null);
+  const [profileCompletion, setProfileCompletion] = useState(0);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [verifyUploading, setVerifyUploading] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState('');
+  const [verifyError, setVerifyError] = useState('');
+  const [docInputs, setDocInputs] = useState({ license: null, governmentId: null, supporting: [] });
 
   const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
     // Check file size (max 5MB)
@@ -140,52 +151,24 @@ const BusinessDashboard = () => {
     });
   };
 
-  // Load stats and unread messages count
+  // unread messages count lane k liye
   useEffect(() => {
-    // In a real app, you would fetch this data from your backend
-    const fetchData = async () => {
-      // Simulated API call for stats
-      setTimeout(() => {
-        setStats({
-          totalBookings: 42,
-          monthlyRevenue: 5240,
-          averageRating: 4.7,
-          newMessages: 5,
-          upcomingAppointments: [
-            { id: 1, customer: 'John Doe', service: 'AC Repair', date: '2023-08-15 10:00' },
-            { id: 2, customer: 'Jane Smith', service: 'Plumbing', date: '2023-08-16 14:30' },
-          ]
-        });
-      }, 500);
-
-      // Load unread messages count from localStorage
+    const updateUnread = () => {
       try {
         const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]');
         const unread = inquiries.filter(inquiry => !inquiry.isRead).length;
         setUnreadCount(unread);
       } catch (error) {
-        console.error('Error loading unread messages:', error);
+        // ignore error
       }
     };
 
-    fetchData();
-    
-    // Set up storage event listener to update unread count when inquiries change
-    const handleStorageChange = () => {
-      try {
-        const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]');
-        const unread = inquiries.filter(inquiry => !inquiry.isRead).length;
-        setUnreadCount(unread);
-      } catch (error) {
-        console.error('Error updating unread messages:', error);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    updateUnread();
+    window.addEventListener('storage', updateUnread);
+    return () => window.removeEventListener('storage', updateUnread);
   }, []);
 
-  // Update stats when business data changes
+  // business data change pe stats update krne k liye
   useEffect(() => {
     if (myBusiness) {
       setStats(prev => ({
@@ -195,10 +178,26 @@ const BusinessDashboard = () => {
         averageRating: myBusiness.rating?.average || 0,
         verificationStatus: myBusiness.verification?.isVerified ? 'Verified' : 'Pending'
       }));
+
+      // Calculate profile completion
+      const fields = [
+        myBusiness.businessName,
+        myBusiness.businessType,
+        myBusiness.description,
+        myBusiness.contact?.phone,
+        myBusiness.contact?.email,
+        myBusiness.location?.address,
+        myBusiness.location?.city,
+        myBusiness.images?.logo,
+        myBusiness.images?.cover,
+      ];
+      const completed = fields.filter(Boolean).length;
+      const pct = Math.round((completed / fields.length) * 100);
+      setProfileCompletion(pct);
     }
   }, [myBusiness]);
 
-  // Load "My Business" when tab becomes active
+  // my business data load krne k liye
   useEffect(() => {
     const fetchMyBusiness = async () => {
       try {
@@ -223,7 +222,7 @@ const BusinessDashboard = () => {
     fetchMyBusiness();
   }, []); // Remove activeTab dependency so it loads once on mount
 
-  // Load reviews once the business is available
+  // business milne pe reviews load krne k liye
   useEffect(() => {
     const loadReviews = async () => {
       if (!myBusiness?._id) return;
@@ -250,6 +249,135 @@ const BusinessDashboard = () => {
   const handleLogout = () => {
     logout();
     navigate('/business/login');
+  };
+
+  const computeStatusBadge = (business) => {
+    if (!business) return { label: 'Unverified', cls: 'status-unverified', icon: '❌' };
+    if (business.verification?.isVerified) return { label: 'Verified', cls: 'status-verified', icon: '✅' };
+    if (business.status === 'pending' && (business.verification?.documents || []).length > 0) return { label: 'Pending Review', cls: 'status-pending', icon: '⏳' };
+    return { label: 'Unverified', cls: 'status-unverified', icon: '❌' };
+  };
+
+  // Compress image before converting to data URL for verification docs
+  const compressImageForVerification = (file, maxWidth = 1200, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculate new dimensions
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(resolve, 'image/jpeg', quality);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const toDataUrlForVerification = async (file) => {
+    // If it's an image, compress it first
+    if (file.type.startsWith('image/')) {
+      const compressedBlob = await compressImageForVerification(file);
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(compressedBlob);
+      });
+    }
+    
+    // For non-images, convert directly
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const submitVerification = async (e) => {
+    e.preventDefault();
+    if (!myBusiness?._id) return;
+    try {
+      setVerifyUploading(true);
+      setVerifyMsg('');
+      setVerifyError('');
+
+      const payload = { supporting: [] };
+      if (docInputs.license instanceof File) payload.license = await toDataUrlForVerification(docInputs.license);
+      if (docInputs.governmentId instanceof File) payload.governmentId = await toDataUrlForVerification(docInputs.governmentId);
+      if (Array.isArray(docInputs.supporting)) {
+        for (const f of docInputs.supporting) {
+          if (f instanceof File) payload.supporting.push(await toDataUrlForVerification(f));
+        }
+      }
+
+      // Add cache-busting parameter to prevent browser caching issues
+      const res = await fetch(`http://localhost:5000/api/business/verification-docs?t=${Date.now()}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify({ businessId: myBusiness._id, ...payload })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
+      
+      setMyBusiness(data.business);
+      setVerifyMsg('Thank you! Your documents have been submitted and are under review. Our team will review within 2 business days.');
+      setVerifyOpen(false);
+    } catch (err) {
+      setVerifyError(err.message || 'Failed to upload');
+    } finally {
+      setVerifyUploading(false);
+    }
+  };
+
+  // Function to generate slug from business title
+  const generateSlug = (title) => {
+    if (!title) return '';
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .trim('-'); // Remove leading/trailing hyphens
+  };
+
+  // Function to generate business profile URL
+  const getBusinessProfileUrl = (business) => {
+    if (!business) return '';
+    
+    // Try multiple possible fields for category
+    let category = business.businessType || 
+                   business.category || 
+                   business.serviceType || 
+                   (business.services && business.services[0] && business.services[0].name) ||
+                   'other';
+    
+    // Clean up the category
+    category = category.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    const slug = generateSlug(business.businessName);
+    return `/business/${category}/${slug}`;
+  };
+
+  const toTitleCase = (str) => {
+    if (!str) return '';
+    return String(str).replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
   };
 
   const StatCard = ({ icon, title, value, change, color = 'primary' }) => (
@@ -331,6 +459,8 @@ const BusinessDashboard = () => {
   };
 
   const ImageUploader = ({ label, currentImage, onImageChange, type = 'single', multiple = false }) => {
+    const [isDragging, setIsDragging] = useState(false);
+    const inputRef = useRef(null);
     // Ensure currentImage is always an array for gallery or string for single images
     const safeCurrentImage = multiple 
       ? (Array.isArray(currentImage) ? currentImage : [])
@@ -339,10 +469,48 @@ const BusinessDashboard = () => {
     // Additional safety check for gallery
     const safeGallery = multiple && Array.isArray(safeCurrentImage) ? safeCurrentImage : [];
     
+    const handleFiles = async (files) => {
+      try {
+        setImageProcessing(true);
+        setBizError('');
+        if (multiple) {
+          const fileArr = Array.from(files || []);
+          const urls = [];
+          if (fileArr.length + (Array.isArray(safeGallery) ? safeGallery.length : 0) > 5) {
+            setBizError('Maximum 5 images allowed for gallery.');
+            setImageProcessing(false);
+            return;
+          }
+          for (const f of fileArr) {
+            const dataUrl = await readFileAsDataUrl(f);
+            urls.push(dataUrl);
+          }
+          const existingGallery = Array.isArray(safeGallery) ? safeGallery : [];
+          onImageChange([...existingGallery, ...urls]);
+        } else {
+          const f = files?.[0];
+          if (f) {
+            const dataUrl = await readFileAsDataUrl(f);
+            onImageChange(dataUrl);
+          }
+        }
+      } catch (err) {
+        setBizError(err.message || 'Failed to read file(s)');
+      } finally {
+        setImageProcessing(false);
+        setIsDragging(false);
+      }
+    };
+
     return (
-      <div className="image-uploader">
+      <div className={`image-uploader ${isDragging ? 'drag-active' : ''}`}>
         <label className="uploader-label">{label}</label>
-        <div className="uploader-content">
+        <div 
+          className="uploader-content drop-zone"
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+        >
           {safeCurrentImage && (multiple ? safeGallery.length > 0 : safeCurrentImage) && (
             <div className="image-preview-container">
               {multiple ? (
@@ -368,6 +536,11 @@ const BusinessDashboard = () => {
                       )}
                     </div>
                   ))}
+                  {isEditing && multiple && (
+                    <button type="button" className="add-more-tile" onClick={() => inputRef.current?.click()}>
+                      <FaPlus /> Add More
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
@@ -389,69 +562,22 @@ const BusinessDashboard = () => {
               )}
             </div>
           )}
+          {(!multiple && !safeCurrentImage) || (multiple && safeGallery.length === 0) ? (
+            <div className="upload-placeholder" onClick={() => isEditing && inputRef.current?.click()}>
+              <FaCloudUploadAlt className="upload-icon" />
+              <div className="upload-text">Drag & drop or click to upload</div>
+              <div className="upload-sub">JPG, PNG up to 5MB</div>
+            </div>
+          ) : null}
           {isEditing && (
             <div className="upload-input">
               <input
                 type="file"
                 accept="image/*"
                 multiple={multiple}
+                ref={inputRef}
                 onChange={async (e) => {
-                  try {
-                    setImageProcessing(true);
-                    setBizError('');
-                    
-                    if (multiple) {
-                      const files = Array.from(e.target.files || []);
-                      const urls = [];
-                      
-                      // Check total number of files (max 5 for gallery)
-                      if (files.length > 5) {
-                        setBizError('Maximum 5 images allowed for gallery. Please select fewer images.');
-                        setImageProcessing(false);
-                        return;
-                      }
-                      
-                      for (const file of files) {
-                        try {
-                          const dataUrl = await readFileAsDataUrl(file);
-                          urls.push(dataUrl);
-                        } catch (fileError) {
-                          setBizError(`Error processing ${file.name}: ${fileError.message}`);
-                          setImageProcessing(false);
-                          return;
-                        }
-                      }
-                      
-                      // For gallery, append to existing images or create new array
-                      const existingGallery = Array.isArray(safeGallery) ? safeGallery : [];
-                      const totalImages = existingGallery.length + urls.length;
-                      
-                      if (totalImages > 5) {
-                        setBizError('Maximum 5 images allowed for gallery. Please remove some existing images first.');
-                        setImageProcessing(false);
-                        return;
-                      }
-                      
-                      onImageChange([...existingGallery, ...urls]);
-                      setBizError(''); // Clear any previous errors
-                    } else {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const dataUrl = await readFileAsDataUrl(file);
-                          onImageChange(dataUrl);
-                          setBizError(''); // Clear any previous errors
-                        } catch (fileError) {
-                          setBizError(`Error processing ${file.name}: ${fileError.message}`);
-                        }
-                      }
-                    }
-                  } catch (error) {
-                    console.error('Error processing image:', error);
-                    setBizError('Error processing image. Please try again with a smaller image.');
-                  } finally {
-                    setImageProcessing(false);
-                  }
+                  await handleFiles(e.target.files);
                 }}
               />
               <div className="upload-hint">
@@ -481,6 +607,7 @@ const BusinessDashboard = () => {
   const navItems = [
     { id: 'dashboard', icon: <FaChartLine />, label: 'Dashboard' },
     { id: 'myBusiness', icon: <MdBusiness />, label: 'My Business' },
+    { id: 'messages', icon: <FaComments />, label: 'Messages', badge: unreadCount },
     { id: 'reviews', icon: <FaStar />, label: 'Reviews' },
   ];
   
@@ -506,7 +633,7 @@ const BusinessDashboard = () => {
   }, [isMobileMenuOpen]);
 
   return (
-    <div className={`business-dashboard ${isMobileMenuOpen ? 'sidebar-visible' : ''}`}>
+    <div className={`business-dashboard ${isMobileMenuOpen ? 'sidebar-visible' : ''} ${autoCollapseSidebar ? 'sidebar-collapsed' : ''} ${activeTab === 'messages' ? 'messages-view' : ''}`}>
       {/* Mobile Menu Toggle Button */}
       <button 
         className="mobile-menu-button"
@@ -518,9 +645,20 @@ const BusinessDashboard = () => {
       
       {/* Sidebar Navigation */}
       <aside className={`dashboard-sidebar ${isMobileMenuOpen ? 'mobile-visible' : ''}`}>
+        <button
+          className="mobile-close-sidebar"
+          onClick={toggleMobileMenu}
+          aria-label="Close menu"
+        >
+          ×
+        </button>
         <div className="sidebar-header">
-          <h2>BizHub</h2>
-          <p className="welcome-message">Welcome, {user?.name?.split(' ')[0] || 'Business'}!</p>
+          <h2>{myBusiness?.businessName || 'AAA Service Directory'}</h2>
+          <p className="welcome-message">
+            {myBusiness
+              ? `${toTitleCase(myBusiness.businessType || myBusiness.category || 'Business')}${myBusiness.location?.city ? ' · ' + myBusiness.location.city : ''}`
+              : `Welcome, ${user?.name?.split(' ')[0] || 'Business'}!`}
+          </p>
         </div>
         
         <nav className="sidebar-nav">
@@ -548,7 +686,7 @@ const BusinessDashboard = () => {
               {user?.name?.charAt(0) || 'B'}
             </div>
             <div className="user-details">
-              <span className="user-name">{user?.name || 'Business Owner'}</span>
+              <span className="user-name">{myBusiness?.businessName || user?.name || 'Business Owner'}</span>
               <span className="user-email">{user?.email || ''}</span>
             </div>
           </div>
@@ -557,15 +695,24 @@ const BusinessDashboard = () => {
 
       {/* Main Content */}
       <main className="dashboard-main">
+        {/* Mobile header: back to home + hamburger */}
+        <div className="mobile-topbar-only">
+          <button className="mobile-back-home" onClick={() => navigate('/')}>← Back</button>
+          <button className="mobile-hamburger-btn" onClick={toggleMobileMenu} aria-label="Toggle sidebar">☰</button>
+        </div>
+        {activeTab !== 'messages' && (
         <header className="dashboard-header">
           <div className="header-left">
-            <h1>{navItems.find(item => item.id === activeTab)?.label || 'Dashboard'}</h1>
+            <h1>{activeTab === 'myBusiness' ? 'My Business' : (navItems.find(item => item.id === activeTab)?.label || 'Dashboard')}</h1>
+            {activeTab === 'myBusiness' && (
+              <p className="header-subtitle">Manage your business profile</p>
+            )}
           </div>
           <div className="header-actions">
             {myBusiness?._id && (
               <a
                 className="btn-view-profile"
-                href={`/business/${myBusiness._id}`}
+                href={getBusinessProfileUrl(myBusiness)}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="View Public Profile"
@@ -574,24 +721,48 @@ const BusinessDashboard = () => {
               </a>
             )}
             {activeTab === 'myBusiness' && (
-              <button className="btn-primary" type="button" onClick={() => setIsEditing((v) => !v)}>
+              <button
+                className="btn-primary"
+                type="button"
+                onClick={() => {
+                  if (isEditing) {
+                    try {
+                      if (formRef.current) {
+                        if (typeof formRef.current.requestSubmit === 'function') {
+                          formRef.current.requestSubmit();
+                        } else {
+                          formRef.current.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                        }
+                      }
+                    } catch (e) {
+                      // Fallback: do nothing, bottom save still works
+                    }
+                  } else {
+                    setIsEditing(true);
+                    // Bring form into view for quick edits
+                    setTimeout(() => formRef.current && formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+                  }
+                }}
+              >
                 {isEditing ? <><FaSave /> Save Changes</> : <><FaEdit /> Edit Listing</>}
               </button>
             )}
-            <button 
-              className="icon-button"
-              onClick={() => setActiveTab('inbox')}
-              data-badge={unreadCount > 0 ? unreadCount : null}
-            >
-              <FaEnvelope />
-              {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-            </button>
-            <button className="icon-button">
-              <FaBell />
-              <span className="notification-badge">3</span>
-            </button>
           </div>
         </header>
+        )}
+
+        {activeTab === 'myBusiness' && (
+          <div className="profile-progress-card">
+            <div className="progress-top">
+              <span className="progress-title">Profile completion</span>
+              <span className="progress-value">{profileCompletion}%</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${profileCompletion}%` }} />
+            </div>
+            <div className="progress-subtext">Complete your profile to increase trust and visibility</div>
+          </div>
+        )}
 
         {activeTab === 'dashboard' && (
           <>
@@ -727,6 +898,65 @@ const BusinessDashboard = () => {
                   )}
                 </div>
               </div>
+              {myBusiness && (
+                <div className="status-row">
+                  {(() => { const s = computeStatusBadge(myBusiness); return (
+                    <span className={`status-badge ${s.cls}`}>{s.icon} {s.label}</span>
+                  ); })()}
+                </div>
+              )}
+
+              {!myBusiness?.verification?.isVerified && (
+                <div className="verify-card">
+                  <div className="verify-header">
+                    <h4>Verify Your Business</h4>
+                    {!verifyOpen && (
+                      <button className="btn-primary" onClick={() => setVerifyOpen(true)}>
+                        Upload Documents
+                      </button>
+                    )}
+                  </div>
+                  {console.log('🔍 Business verification state:', {
+                    isVerified: myBusiness?.verification?.isVerified,
+                    hasDocuments: myBusiness?.verification?.documents?.length > 0,
+                    status: myBusiness?.status,
+                    businessId: myBusiness?._id
+                  })}
+                  {!verifyOpen && (
+                    <p className="verify-help">
+                      {myBusiness?.verification?.documents && myBusiness.verification.documents.length > 0
+                        ? 'Thank you! Your documents have been submitted and are under review. Our team will review within 2 business days.'
+                        : 'Your business is listed as Unverified. Please upload documents to get verified.'}
+                    </p>
+                  )}
+                  {verifyOpen && (
+                    <form className="verify-form" onSubmit={submitVerification}>
+                      {verifyError && <div className="error-message">{verifyError}</div>}
+                      {verifyMsg && <div className="success-message">{verifyMsg}</div>}
+                      <div className="verify-grid">
+                        <label className="verify-input">
+                          <span>Business License</span>
+                          <input type="file" accept="image/*,application/pdf" onChange={(e)=>setDocInputs(v=>({...v,license:e.target.files?.[0]||null}))} />
+                        </label>
+                        <label className="verify-input">
+                          <span>Government ID</span>
+                          <input type="file" accept="image/*,application/pdf" onChange={(e)=>setDocInputs(v=>({...v,governmentId:e.target.files?.[0]||null}))} />
+                        </label>
+                        <label className="verify-input">
+                          <span>Supporting Documents (optional)</span>
+                          <input type="file" accept="image/*,application/pdf" multiple onChange={(e)=>setDocInputs(v=>({...v,supporting:Array.from(e.target.files||[])}))} />
+                        </label>
+                      </div>
+                      <div className="verify-actions">
+                        <button className="btn-primary" type="submit" disabled={verifyUploading}>
+                          {verifyUploading ? 'Submitting...' : 'Submit for Review'}
+                        </button>
+                        <button type="button" className="btn-secondary" onClick={()=>setVerifyOpen(false)}>Cancel</button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
               
               {bizError && <div className="error-message">{bizError}</div>}
               {bizSuccess && <div className="success-message">{bizSuccess}</div>}
@@ -738,6 +968,7 @@ const BusinessDashboard = () => {
                 </div>
               ) : myBusiness ? (
                 <form
+                  ref={formRef}
                   onSubmit={async (e) => {
                     e.preventDefault();
                     let payload; // Declare payload outside try block
@@ -746,6 +977,18 @@ const BusinessDashboard = () => {
                       setBizError('');
                       setBizSuccess('');
                       
+                      // Build safe, merged gallery (existing + new previews), max 5, no empties/dupes
+                      const previewGallery = Array.isArray(imagePreviews.gallery) ? imagePreviews.gallery : [];
+                      const existingGallery = Array.isArray(myBusiness.images?.gallery) ? myBusiness.images.gallery : [];
+                      const mergedGallery = (() => {
+                        const combined = [...existingGallery, ...previewGallery]
+                          .filter(Boolean)
+                          .map(s => (typeof s === 'string' ? s.trim() : s))
+                          .filter(Boolean);
+                        const unique = Array.from(new Map(combined.map(u => [u, u])).values());
+                        return unique.slice(0, 5);
+                      })();
+
                       payload = {
                         businessName: myBusiness.businessName?.trim(),
                         businessType: myBusiness.businessType,
@@ -761,22 +1004,13 @@ const BusinessDashboard = () => {
                           area: myBusiness.location?.area?.trim() || undefined,
                         },
                         businessHours: myBusiness.businessHours,
+                        additionalServices: myBusiness.additionalServices || [],
                         images: {
                           logo: imagePreviews.logo || myBusiness.images?.logo || undefined,
                           cover: imagePreviews.cover || myBusiness.images?.cover || undefined,
-                          gallery: (() => {
-                            // Safe gallery handling
-                            const previewGallery = Array.isArray(imagePreviews.gallery) ? imagePreviews.gallery : [];
-                            const existingGallery = Array.isArray(myBusiness.images?.gallery) ? myBusiness.images.gallery : [];
-                            return previewGallery.length > 0 ? previewGallery : existingGallery;
-                          })()
+                          gallery: mergedGallery
                         }
                       };
-                      
-                      // Debug logging to help identify issues
-                      console.log('Image Previews:', imagePreviews);
-                      console.log('My Business Images:', myBusiness.images);
-                      console.log('Final Payload Images:', payload.images);
                       
                       const res = await fetch(`http://localhost:5000/api/business/${myBusiness._id}`, {
                         method: 'PUT',
@@ -812,7 +1046,7 @@ const BusinessDashboard = () => {
                   <div className="form-section media-section">
                     <div className="section-header">
                       <h4><FaCog /> Brand & Media</h4>
-                      <span className="section-description">Upload your business logo, cover image, and gallery photos to create a professional appearance</span>
+                      <span className="section-description">Upload your business logo and photos to create a professional appearance</span>
                     </div>
                     <div className="media-grid">
                       <ImageUploader
@@ -822,16 +1056,10 @@ const BusinessDashboard = () => {
                         type="logo"
                       />
                       <ImageUploader
-                        label="Cover Image"
-                        currentImage={imagePreviews.cover || myBusiness.images?.cover}
-                        onImageChange={(url) => setImagePreviews(prev => ({ ...prev, cover: url }))}
+                        label="Cover Photos"
+                        currentImage={Array.isArray(imagePreviews.cover) ? imagePreviews.cover : (myBusiness.images?.cover || [])}
+                        onImageChange={(urls) => setImagePreviews(prev => ({ ...prev, cover: urls || [] }))}
                         type="cover"
-                      />
-                      <ImageUploader
-                        label="Gallery Images"
-                        currentImage={Array.isArray(imagePreviews.gallery) ? imagePreviews.gallery : (myBusiness.images?.gallery || [])}
-                        onImageChange={(urls) => setImagePreviews(prev => ({ ...prev, gallery: urls || [] }))}
-                        type="gallery"
                         multiple={true}
                       />
                     </div>
@@ -855,19 +1083,7 @@ const BusinessDashboard = () => {
                           placeholder="Enter your business name"
                         />
                       </div>
-                      <div className="form-group">
-                        <label>Business Type *</label>
-                        <select
-                          value={myBusiness.businessType || 'other'}
-                          onChange={(e) => setMyBusiness({ ...myBusiness, businessType: e.target.value })}
-                          disabled={!isEditing}
-                          required
-                        >
-                          {['plumbing','electrical','cleaning','painting','gardening','repair','transport','security','education','food','beauty','health','construction','maintenance','other'].map(t => (
-                            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                          ))}
-                        </select>
-                      </div>
+                      
                       <div className="form-group full-width">
                         <label>Description *</label>
                         <textarea
@@ -988,6 +1204,190 @@ const BusinessDashboard = () => {
                     )}
                   </div>
 
+                  {/* Additional Services */}
+                  <div className="form-section">
+                    <div className="section-header">
+                      <h4><FaClipboardList /> Additional Services</h4>
+                      <span className="section-description">Manage your additional services with pricing information</span>
+                    </div>
+                    
+                    {isEditing ? (
+                      <div className="additional-services-editor">
+                        {myBusiness.additionalServices?.map((service, index) => (
+                          <div key={index} className="service-card">
+                            <div className="service-header">
+                              <h5>Service {index + 1}</h5>
+                              <button
+                                type="button"
+                                className="btn-danger btn-sm"
+                                onClick={() => {
+                                  const updatedServices = myBusiness.additionalServices.filter((_, i) => i !== index);
+                                  setMyBusiness({ ...myBusiness, additionalServices: updatedServices });
+                                }}
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                            
+                            <div className="form-grid">
+                              <div className="form-group">
+                                <label>Service Title *</label>
+                                <input
+                                  type="text"
+                                  value={service.serviceTitle || ''}
+                                  onChange={(e) => {
+                                    const updatedServices = [...myBusiness.additionalServices];
+                                    updatedServices[index] = { ...service, serviceTitle: e.target.value };
+                                    setMyBusiness({ ...myBusiness, additionalServices: updatedServices });
+                                  }}
+                                  placeholder="e.g., Emergency Electrical Repair"
+                                  maxLength={100}
+                                />
+                              </div>
+                              
+                              <div className="form-group">
+                                <label>Pricing Type *</label>
+                                <select
+                                  value={service.pricing?.type || 'fixed'}
+                                  onChange={(e) => {
+                                    const updatedServices = [...myBusiness.additionalServices];
+                                    updatedServices[index] = {
+                                      ...service,
+                                      pricing: {
+                                        ...service.pricing,
+                                        type: e.target.value,
+                                        amount: e.target.value === 'negotiable' ? undefined : service.pricing?.amount || 0,
+                                        unit: e.target.value === 'hourly' ? 'per hour' : service.pricing?.unit
+                                      }
+                                    };
+                                    setMyBusiness({ ...myBusiness, additionalServices: updatedServices });
+                                  }}
+                                >
+                                  <option value="fixed">Fixed Price</option>
+                                  <option value="hourly">Hourly Rate</option>
+                                  <option value="negotiable">Negotiable</option>
+                                </select>
+                              </div>
+                              
+                              {(service.pricing?.type === 'fixed' || service.pricing?.type === 'hourly') && (
+                                <div className="form-group">
+                                  <label>Price (PKR) *</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={service.pricing?.amount || ''}
+                                    onChange={(e) => {
+                                      const updatedServices = [...myBusiness.additionalServices];
+                                      updatedServices[index] = {
+                                        ...service,
+                                        pricing: { ...service.pricing, amount: parseFloat(e.target.value) || 0 }
+                                      };
+                                      setMyBusiness({ ...myBusiness, additionalServices: updatedServices });
+                                    }}
+                                    placeholder="Enter price"
+                                  />
+                                </div>
+                              )}
+                              
+                              {service.pricing?.type === 'hourly' && (
+                                <div className="form-group">
+                                  <label>Unit *</label>
+                                  <select
+                                    value={service.pricing?.unit || 'per hour'}
+                                    onChange={(e) => {
+                                      const updatedServices = [...myBusiness.additionalServices];
+                                      updatedServices[index] = {
+                                        ...service,
+                                        pricing: { ...service.pricing, unit: e.target.value }
+                                      };
+                                      setMyBusiness({ ...myBusiness, additionalServices: updatedServices });
+                                    }}
+                                  >
+                                    <option value="per hour">Per Hour</option>
+                                    <option value="per day">Per Day</option>
+                                    <option value="per month">Per Month</option>
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="form-group full-width">
+                              <label>Service Description *</label>
+                              <textarea
+                                value={service.serviceDescription || ''}
+                                onChange={(e) => {
+                                  const updatedServices = [...myBusiness.additionalServices];
+                                  updatedServices[index] = { ...service, serviceDescription: e.target.value };
+                                  setMyBusiness({ ...myBusiness, additionalServices: updatedServices });
+                                }}
+                                placeholder="Describe what this service includes, what customers can expect, and any important details..."
+                                rows={3}
+                                minLength={10}
+                                maxLength={500}
+                              />
+                              <small className="text-muted">
+                                {service.serviceDescription?.length || 0}/500 characters
+                              </small>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <button
+                          type="button"
+                          className="btn-secondary btn-add-service"
+                          onClick={() => {
+                            const newService = {
+                              serviceTitle: '',
+                              serviceDescription: '',
+                              pricing: {
+                                type: 'fixed',
+                                amount: 0,
+                                currency: 'PKR',
+                                unit: undefined
+                              }
+                            };
+                            setMyBusiness({
+                              ...myBusiness,
+                              additionalServices: [...(myBusiness.additionalServices || []), newService]
+                            });
+                          }}
+                        >
+                          <FaPlus /> Add New Service
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="additional-services-display">
+                        {myBusiness.additionalServices?.length > 0 ? (
+                          <div className="services-grid">
+                            {myBusiness.additionalServices.map((service, index) => (
+                              <div key={index} className="service-display-card">
+                                <h5>{service.serviceTitle}</h5>
+                                <p>{service.serviceDescription}</p>
+                                <div className="service-pricing">
+                                  {service.pricing?.type === 'fixed' && (
+                                    <span className="price">{service.pricing.amount} PKR</span>
+                                  )}
+                                  {service.pricing?.type === 'hourly' && (
+                                    <span className="price">{service.pricing.amount} PKR {service.pricing.unit}</span>
+                                  )}
+                                  {service.pricing?.type === 'negotiable' && (
+                                    <span className="price">Price Negotiable</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="empty-services">
+                            <p>No additional services added yet.</p>
+                            <small>Click "Edit Business" to add services.</small>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Action Buttons */}
                   {isEditing && (
                     <div className="form-actions">
@@ -1049,6 +1449,12 @@ const BusinessDashboard = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'messages' && (
+          <div className="dashboard-card messages-card">
+            <BusinessMessagingDashboard />
           </div>
         )}
 

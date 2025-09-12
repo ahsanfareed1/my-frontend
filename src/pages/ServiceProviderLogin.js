@@ -260,7 +260,7 @@ const ServiceProviderLogin = () => {
               <span className="checkmark"></span>
               Remember me
             </label>
-            <Link to="/forgot-password" className="forgot-password-link">Forgot Password?</Link>
+            <Link to="/business/forgot-password" className="forgot-password-link">Forgot Password?</Link>
           </div>
 
           <button 

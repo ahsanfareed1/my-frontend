@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom';
 import './ServicesSection.css';
 import CategoryCard from './CategoryCard';
 import ServiceCard from './ServiceCard';
-import featuredServices from '../data/featuredServices';
 
 const ServicesSection = () => {
     // Updated categories to match navigation
@@ -118,8 +117,8 @@ const ServicesSection = () => {
         <section className="services-section">
             <div className="container">
                 <div className="section-header">
-                    <h1>Service Categories</h1>
-                    <p className="section-subtitle">Discover our comprehensive range of professional services</p>
+                    <h1>Popular Service Categories</h1>
+                    <p className="section-subtitle">Discover our most popular professional services</p>
                 </div>
                 
                 <div className="categories-container">
@@ -131,7 +130,7 @@ const ServicesSection = () => {
                 </div>
                 
                 <div className="see-more-container">
-                    <Link to="/services" className="see-more-link">
+                    <Link to="/service-categories" className="see-more-link">
                         View All Categories →
                     </Link>
                 </div>

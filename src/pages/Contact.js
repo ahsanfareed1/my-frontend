@@ -13,17 +13,14 @@ import {
 } from 'react-icons/fa';
 
 const Contact = () => {
-  // Co-founders data
+  // co-founders ka data
   const coFounders = [
     {
       id: 1,
       name: "Ahsan Fareed",
       position: "Co-Founder & CEO",
-      image: "https://via.placeholder.com/200x200/228B22/ffffff?text=AF",
+      image: "ahsan.jpg",
       description: "Leading AAA Services platform with vision to connect quality service providers with customers across Pakistan.",
-      expertise: ["Platform Strategy", "Business Development", "Customer Experience"],
-      rating: 4.9,
-      reviews: 127,
       email: "ahsan.fareed@aaaservices.com",
       phone: "+92-300-1234567",
       linkedin: "https://linkedin.com/in/ahsanfareed",
@@ -33,11 +30,8 @@ const Contact = () => {
       id: 2,
       name: "Ali Haider",
       position: "Co-Founder & CTO",
-      image: "https://via.placeholder.com/200x200/32CD32/ffffff?text=AH",
+      image: "/alihaider.png",
       description: "Driving technological innovation and ensuring seamless platform performance for our users.",
-      expertise: ["Technology Strategy", "Platform Development", "System Architecture"],
-      rating: 4.8,
-      reviews: 89,
       email: "ali.haider@aaaservices.com",
       phone: "+92-300-2345678",
       linkedin: "https://linkedin.com/in/alihaider",
@@ -47,11 +41,8 @@ const Contact = () => {
       id: 3,
       name: "Muhammad Ali Khan",
       position: "Co-Founder & COO",
-      image: "https://via.placeholder.com/200x200/006400/ffffff?text=MAK",
+      image: "alikhan.jpg",
       description: "Managing operations and building strong partnerships with service providers and customers.",
-      expertise: ["Operations Management", "Partnership Development", "Quality Assurance"],
-      rating: 4.9,
-      reviews: 156,
       email: "muhammad.khan@aaaservices.com",
       phone: "+92-300-3456789",
       linkedin: "https://linkedin.com/in/muhammadalikhan",
@@ -61,7 +52,7 @@ const Contact = () => {
 
   return (
     <div className="contact-page">
-      {/* Hero Section */}
+      {/* hero section */}
       <section className="contact-hero">
         <div className="hero-content">
           <h1>Get in Touch</h1>
@@ -69,12 +60,12 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* Contact Information Section */}
+      {/* contact info section */}
       <section className="contact-info-section">
         <div className="container">
           <div className="contact-cards">
             <div className="contact-card">
-              <div className="contact-icon">
+              <div className="contact-icon-page">
                 <FaEnvelope />
               </div>
               <h3>Email Us</h3>
@@ -85,7 +76,7 @@ const Contact = () => {
             </div>
 
             <div className="contact-card">
-              <div className="contact-icon">
+              <div className="contact-icon-page">
                 <FaPhone />
               </div>
               <h3>Call Us</h3>
@@ -96,7 +87,7 @@ const Contact = () => {
             </div>
 
             <div className="contact-card">
-              <div className="contact-icon">
+              <div className="contact-icon-page">
                 <FaMapMarkerAlt />
               </div>
               <h3>Visit Us</h3>
@@ -109,7 +100,7 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* Co-Founders Section */}
+      {/* co-founders section */}
       <section className="team-section">
         <div className="container">
           <div className="section-header">
@@ -144,25 +135,10 @@ const Contact = () => {
                   <h3 className="member-name">{founder.name}</h3>
                   <p className="member-position">{founder.position}</p>
                   
-                  <div className="member-rating">
-                    <div className="rating-stars">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <FaStar 
-                          key={star} 
-                          className={star <= Math.floor(founder.rating) ? 'star filled' : 'star'} 
-                        />
-                      ))}
-                    </div>
-                    <span className="rating-text">{founder.rating} ({founder.reviews} reviews)</span>
-                  </div>
                   
                   <p className="member-description">{founder.description}</p>
                   
-                  <div className="member-expertise">
-                    {founder.expertise.map((skill, index) => (
-                      <span key={index} className="expertise-tag">{skill}</span>
-                    ))}
-                  </div>
+                  
                   
                   <div className="member-contact">
                     <a href={`mailto:${founder.email}`} className="contact-btn email">
@@ -179,7 +155,7 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* stats section */}
       <section className="stats-section">
         <div className="container">
           <div className="stats-grid">

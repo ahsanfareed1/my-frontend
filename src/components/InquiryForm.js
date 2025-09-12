@@ -13,7 +13,7 @@ const InquiryForm = ({ serviceProviderId, serviceId, serviceName, onClose, onSuc
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Pre-fill form if user is logged in
+  // agr user login ho to form prefill krne k liye
   useEffect(() => {
     if (currentUser) {
       setFormData(prev => ({
@@ -54,15 +54,32 @@ const InquiryForm = ({ serviceProviderId, serviceId, serviceName, onClose, onSuc
   };
 
   const sendEmailNotification = async (inquiryData) => {
-    // In a real app, this would be an API call to your backend
-    console.log('Sending email notification:', inquiryData);
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log('Email notification sent to service provider');
-        resolve(true);
-      }, 1000);
-    });
+    try {
+      const response = await fetch('http://localhost:5000/api/inquiry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          businessId: serviceProviderId,
+          customerName: inquiryData.userName,
+          customerEmail: inquiryData.userEmail,
+          customerPhone: inquiryData.userPhone,
+          message: inquiryData.message,
+          serviceType: serviceName
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send inquiry');
+      }
+
+      return true;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -100,7 +117,6 @@ const InquiryForm = ({ serviceProviderId, serviceId, serviceName, onClose, onSuc
       if (onClose) onClose();
     } catch (err) {
       setError('Failed to send inquiry. Please try again.');
-      console.error('Error submitting inquiry:', err);
     } finally {
       setIsSubmitting(false);
     }

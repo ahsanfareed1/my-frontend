@@ -12,7 +12,6 @@
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 800px;
   padding: 2.5rem;
   margin: 2rem 0;
 }
@@ -107,6 +106,17 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .form-group {
@@ -581,11 +591,3 @@
   background: #3182ce;
 }
 
-/* Field Description */
-.field-description {
-  color: #718096;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-  margin-bottom: 1rem;
-  font-style: italic;
-}

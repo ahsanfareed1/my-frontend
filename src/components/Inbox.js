@@ -9,19 +9,18 @@ const Inbox = () => {
   const [replyContent, setReplyContent] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
-  // Load inquiries from localStorage
+  // localStorage se inquiries load krne k liye
   useEffect(() => {
     const loadInquiries = () => {
       try {
         const savedInquiries = JSON.parse(localStorage.getItem('inquiries') || '[]');
         setInquiries(savedInquiries);
       } catch (error) {
-        console.error('Error loading inquiries:', error);
       }
     };
 
     loadInquiries();
-    // Set up storage event listener to sync across tabs
+    // multi tabs me sync rakhne k liye
     window.addEventListener('storage', loadInquiries);
     return () => window.removeEventListener('storage', loadInquiries);
   }, []);
@@ -33,7 +32,7 @@ const Inbox = () => {
   );
 
   const handleInquiryClick = (inquiry) => {
-    // Mark as read
+    // read mark krne k liye
     if (!inquiry.isRead) {
       const updatedInquiries = inquiries.map(i => 
         i.id === inquiry.id ? { ...i, isRead: true } : i

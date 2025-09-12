@@ -15,7 +15,7 @@ function ClientLogin() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect if already logged in
+  // agr already login ho to redirect krdo
   useEffect(() => {
     if (isAuthenticated) {
       const redirectTo = location.state?.from?.pathname || '/';
@@ -47,7 +47,7 @@ function ClientLogin() {
         }
       }
     } catch (err) {
-      console.error('Login error:', err);
+      // login error ko quietly handle kr rhy hain
       setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);

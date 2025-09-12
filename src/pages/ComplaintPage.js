@@ -1,42 +1,101 @@
-import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import ComplaintForm from '../components/ComplaintForm';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { FaSearch, FaMapMarkerAlt, FaStar, FaBuilding, FaRegUser } from 'react-icons/fa';
+import { AuthContext } from '../context/AuthContext';
+import StandaloneComplaintForm from '../components/StandaloneComplaintForm';
 import './ComplaintPage.css';
 
 const ComplaintPage = () => {
   const navigate = useNavigate();
-  const { providerId } = useParams();
+  const { isAuthenticated } = useContext(AuthContext);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  
+  // business search aur selection states
+  const [businesses, setBusinesses] = useState([]);
+  const [filteredBusinesses, setFilteredBusinesses] = useState([]);
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showBusinessList, setShowBusinessList] = useState(false);
+  const [isLoadingBusinesses, setIsLoadingBusinesses] = useState(false);
+  
+  // user token localStorage se lene k liye
+  const userToken = localStorage.getItem('token');
 
-  const handleSubmit = async (formData) => {
-    // In a real application, you would make an API call here
-    console.log('Submitting complaint:', formData);
-    
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Save to localStorage for demo purposes
-        const complaints = JSON.parse(localStorage.getItem('complaints') || '[]');
-        complaints.push({
-          id: Date.now().toString(),
-          ...formData,
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        });
-        localStorage.setItem('complaints', JSON.stringify(complaints));
-        
-        console.log('Complaint submitted successfully');
-        toast.success('Your complaint has been submitted successfully!');
-        setIsSubmitted(true);
-        resolve();
-      }, 1000);
-    });
+  // filter k liye service categories
+  const serviceCategories = {
+    plumbing: 'Plumbing',
+    electrical: 'Electrical',
+    cleaning: 'Cleaning',
+    painting: 'Painting',
+    gardening: 'Gardening',
+    repair: 'Repair',
+    transport: 'Transport',
+    security: 'Security',
+    education: 'Education',
+    food: 'Food',
+    beauty: 'Beauty',
+    health: 'Health',
+    construction: 'Construction',
+    maintenance: 'Maintenance',
+    other: 'Other'
   };
 
-  const handleCancel = () => {
-    navigate('/home'); // Go back to home
+  // api se businesses lane k liye
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      try {
+        setIsLoadingBusinesses(true);
+        const response = await fetch('http://localhost:5000/api/business?status=active&limit=100');
+        if (response.ok) {
+          const data = await response.json();
+          setBusinesses(data.businesses || []);
+          setFilteredBusinesses(data.businesses || []);
+        }
+      } catch (error) {
+        // error pe quietly ignore kr rhy hain
+      } finally {
+        setIsLoadingBusinesses(false);
+      }
+    };
+
+    fetchBusinesses();
+  }, []);
+
+  // Filter businesses based on search query
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const filtered = businesses.filter(business =>
+        business.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        business.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        business.location?.city?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredBusinesses(filtered);
+    } else {
+      setFilteredBusinesses(businesses);
+    }
+  }, [searchQuery, businesses]);
+
+  const handleBusinessSelect = (business) => {
+    setSelectedBusiness(business);
+    setShowBusinessList(false);
+    setSearchQuery(business.businessName);
+  };
+
+  const handleSearchFocus = () => {
+    setShowBusinessList(true);
+  };
+
+  const handleSearchBlur = () => {
+    // item click allow krne k liye thori der baad hide
+    setTimeout(() => setShowBusinessList(false), 200);
+  };
+
+  const handleClose = () => {
+    navigate('/home');
+  };
+
+  const handleSuccess = (message) => {
+    setIsSubmitted(true);
   };
 
   if (isSubmitted) {
@@ -71,22 +130,171 @@ const ComplaintPage = () => {
       <div className="complaint-container">
         <button 
           className="back-button"
-          onClick={handleCancel}
+          onClick={handleClose}
         >
-        <i className="fas fa-arrow-left"> Back</i>
+          <i className="fas fa-arrow-left"></i> Back
         </button>
-        <h1>File a Complaint</h1>
+        <h1 className='complaint-page-title'>File a Complaint</h1>
         <p className="page-description">
-          We're sorry to hear you're having issues. Please fill out the form below to submit 
-          a complaint about a service provider. Our team will review your complaint and take 
-          appropriate action.
+          We're sorry to hear you're having issues. Please search for and select the service provider 
+          you want to file a complaint against, then fill out the form below. Our team will review 
+          your complaint and take appropriate action.
         </p>
-        
-        <ComplaintForm 
-          serviceProviderId={providerId}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-        />
+
+        {/* business search section */}
+        <div className="business-search-section">
+          <h3>Select Service Provider</h3>
+          <div className="business-search">
+            <div className="search-input-wrapper">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search for a business by name, description, or location..."
+                className="form-control"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={handleSearchFocus}
+                onBlur={handleSearchBlur}
+              />
+            </div>
+            
+            {showBusinessList && (
+              <div className="business-list">
+                {isLoadingBusinesses ? (
+                  <div className="loading-businesses">
+                    <div className="spinner"></div>
+                    <span>Loading businesses...</span>
+                  </div>
+                ) : filteredBusinesses.length > 0 ? (
+                  filteredBusinesses.slice(0, 10).map((business) => (
+                    <div 
+                      key={business._id || business.id} 
+                      className="business-item"
+                      onClick={() => handleBusinessSelect(business)}
+                    >
+                      <div className="business-image">
+                        {business.images?.logo ? (
+                          <img 
+                            src={business.images.logo} 
+                            alt={business.businessName} 
+                          />
+                        ) : (
+                          <div className="business-placeholder">
+                            <FaBuilding />
+                          </div>
+                        )}
+                      </div>
+                      <div className="business-info">
+                        <div className="business-name">{business.businessName}</div>
+                        <div className="business-location">
+                          <FaMapMarkerAlt />
+                          <span>{business.location?.city || business.city || 'Location not specified'}</span>
+                        </div>
+                        <div className="business-type">
+                          <span className="category-badge">
+                            {serviceCategories[business.businessType] || business.businessType}
+                          </span>
+                        </div>
+                        {business.rating?.average && (
+                          <div className="business-rating">
+                            <FaStar color="#f9b90b" />
+                            <span>{business.rating.average.toFixed(1)} ({business.rating.totalReviews || 0} reviews)</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-results">
+                    {searchQuery.trim() ? 'No businesses found matching your search' : 'No businesses available'}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {selectedBusiness && (
+            <div className="selected-business">
+              <div className="selected-business-content">
+                <div className="business-image">
+                  {selectedBusiness.images?.logo ? (
+                    <img 
+                      src={selectedBusiness.images.logo} 
+                      alt={selectedBusiness.businessName}
+                    />
+                  ) : (
+                    <div className="business-placeholder">
+                      <FaBuilding />
+                    </div>
+                  )}
+                </div>
+                <div className="business-info">
+                  <h4>{selectedBusiness.businessName}</h4>
+                  <div className="business-location">
+                    <FaMapMarkerAlt />
+                    <span>{selectedBusiness.location?.city || selectedBusiness.city || 'Location not specified'}</span>
+                  </div>
+                  <div className="business-type">
+                    <span className="category-badge">
+                      {serviceCategories[selectedBusiness.businessType] || selectedBusiness.businessType}
+                    </span>
+                  </div>
+                  {selectedBusiness.rating?.average && (
+                    <div className="business-rating">
+                      <FaStar color="#f9b90b" />
+                      <span>{selectedBusiness.rating.average.toFixed(1)} ({selectedBusiness.rating.totalReviews || 0} reviews)</span>
+                    </div>
+                  )}
+                </div>
+                <button 
+                  className="change-business-btn"
+                  onClick={() => {
+                    setSelectedBusiness(null);
+                    setSearchQuery('');
+                    setShowBusinessList(true);
+                  }}
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* complaint form ya auth prompt */}
+        {selectedBusiness ? (
+          !isAuthenticated ? (
+            <div className="auth-required-message">
+              <div className="auth-icon">
+                <FaRegUser />
+              </div>
+              <p>You need to be logged in to file a complaint</p>
+              <div className="auth-actions">
+                <Link to="/login" className="btn-primary">Log In</Link>
+                <Link to="/signup" className="btn-secondary">Sign Up</Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              <StandaloneComplaintForm 
+                businessId={selectedBusiness._id || selectedBusiness.id}
+                businessName={selectedBusiness.businessName}
+                serviceType={selectedBusiness.businessType}
+                userToken={userToken}
+                onSuccess={handleSuccess}
+                onCancel={handleClose}
+              />
+            </>
+          )
+        ) : (
+          <div className="no-business-selected">
+            <div className="no-business-content">
+              <FaBuilding className="no-business-icon" />
+              <h4>Please Select a Service Provider</h4>
+              <p>Search for and select the business you want to file a complaint against to continue.</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaStar, FaPhone, FaMapMarkerAlt, FaEnvelope, FaEdit, FaPlus, FaGlobe, FaClock, FaUsers, FaAward, FaCheckCircle, FaRegClock, FaRegUser, FaRegBuilding, FaRegCalendarAlt } from 'react-icons/fa';
+import { FaStar, FaPhone, FaMapMarkerAlt, FaEnvelope, FaEdit, FaPlus, FaGlobe, FaClock, FaUsers, FaAward, FaCheckCircle, FaRegClock, FaRegUser, FaRegBuilding, FaRegCalendarAlt, FaExclamationTriangle, FaComments } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import './BusinessProfile.css';
 import InquiryForm from '../components/InquiryForm';
+import ComplaintForm from '../components/ComplaintForm';
+import BusinessAvatar from '../components/BusinessAvatar';
+import MessageBusinessButton from '../components/MessageBusinessButton';
 
 const BusinessProfile = () => {
-  const { businessId, serviceId, providerId } = useParams();
+  const { category, businessSlug, serviceId, providerId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useContext(AuthContext);
+  
+  // user token localStorage ya context se nikalne k liye
+  const userToken = localStorage.getItem('token') || user?.token;
 
-  console.log('🔍 BusinessProfile: URL Parameters - businessId:', businessId, 'serviceId:', serviceId, 'providerId:', providerId);
-  console.log('🔍 BusinessProfile: Location state:', location.state);
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,9 +42,10 @@ const BusinessProfile = () => {
 
   // Inquiry form state
   const [showInquiryForm, setShowInquiryForm] = useState(false);
+  const [showComplaintForm, setShowComplaintForm] = useState(false);
   const [inquirySuccess, setInquirySuccess] = useState('');
 
-  // Normalize business data from different sources
+  // different sources se business data normalize krne k liye
   const normalizeBusinessData = (data) => {
     if (!data) return null;
     
@@ -59,23 +64,18 @@ const BusinessProfile = () => {
       city: data.location?.city || data.city,
       yearsOfExperience: data.yearsOfExperience || data.experience,
       profilePicture: data.images?.logo || data.images?.cover || data.profilePicture || data.image,
-      coverPhoto: data.images?.cover || data.coverPhoto,
-      galleryImages: data.images?.gallery || data.galleryImages || [],
+      coverPhotos: data.images?.cover || data.coverPhotos || [],
       businessHours: data.businessHours || data.hours || {},
       userId: data.userId || data.ownerId,
-      services: data.services || []
+      services: data.services || [],
+      additionalServices: data.additionalServices || [],
+      verification: data.verification || { isVerified: false, documents: [] }
     };
-    
-    console.log('🔍 BusinessProfile: Raw services data:', data.services);
-    console.log('🔍 BusinessProfile: Normalized services:', normalized.services);
-    console.log('🔍 BusinessProfile: Rating data:', data.rating);
-    console.log('🔍 BusinessProfile: Total reviews from rating:', data.rating?.totalReviews);
-    console.log('🔍 BusinessProfile: Final totalReviews:', normalized.totalReviews);
     
     return normalized;
   };
 
-  // Handle review form input changes
+  // review form ke inputs handle krne k liye
   const handleReviewInputChange = (e) => {
     const { name, value } = e.target;
     setReviewForm(prev => ({
@@ -86,96 +86,60 @@ const BusinessProfile = () => {
     }));
   };
 
-  // Handle inquiry form success
+  // inquiry success pe message dikhane k liye
   const handleInquirySuccess = (message) => {
-    setInquirySuccess(message);
+    setInquirySuccess(message || 'Inquiry sent successfully! The business will contact you soon.');
     setShowInquiryForm(false);
+    
+    // Show success message for 5 seconds
+    setTimeout(() => {
+      setInquirySuccess('');
+    }, 5000);
   };
 
-  // Submit review to backend
+  // review submit krne k liye
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     
     if (!isAuthenticated) {
-      setReviewError('Please log in to write a review');
+      navigate('/login', { state: { from: location.pathname } });
       return;
     }
-
-    if (!reviewForm.comment.trim()) {
-      setReviewError('Please write a review comment');
-      return;
-    }
-
-    if (reviewForm.comment.trim().length < 10) {
-      setReviewError('Review comment must be at least 10 characters long');
-      return;
-    }
-
-    setSubmittingReview(true);
-    setReviewError('');
-    setReviewSuccess('');
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
+      setSubmittingReview(true);
+      setReviewError('');
+      
       const reviewData = {
-        businessId: businessId || business.id,
         rating: reviewForm.rating,
-        title: reviewForm.title || `Review for ${business.businessName}`,
-        comment: reviewForm.comment.trim(),
+        title: reviewForm.title,
+        comment: reviewForm.comment,
         serviceType: reviewForm.serviceType,
         serviceQuality: reviewForm.serviceQuality,
         communication: reviewForm.communication,
         valueForMoney: reviewForm.valueForMoney,
         punctuality: reviewForm.punctuality,
-        professionalism: reviewForm.professionalism
+        professionalism: reviewForm.professionalism,
+        businessId: business?.id,
       };
 
       if (!reviewData.businessId) {
-        throw new Error('Business ID is missing');
+        setReviewError('Business ID not found');
+        return;
       }
-
-      console.log('🔍 BusinessProfile: SUBMITTING REVIEW - Business ID:', reviewData.businessId);
-      console.log('🔍 BusinessProfile: SUBMITTING REVIEW - URL businessId:', businessId);
-      console.log('🔍 BusinessProfile: SUBMITTING REVIEW - Business object ID:', business?.id);
-      console.log('🔍 BusinessProfile: SUBMITTING REVIEW - Review data:', reviewData);
-
-      console.log('🔍 BusinessProfile: Testing backend connectivity...');
-      try {
-        const testResponse = await fetch('http://localhost:5000/api/business', { 
-          method: 'GET',
-          signal: AbortSignal.timeout(5000)
-        });
-        console.log('🔍 BusinessProfile: Backend connectivity test status:', testResponse.status);
-      } catch (testError) {
-        console.warn('🔍 BusinessProfile: Backend connectivity test failed:', testError);
-      }
-
-      console.log('🔍 BusinessProfile: Submitting review data:', reviewData);
-      console.log('🔍 BusinessProfile: Business ID type:', typeof reviewData.businessId);
-      console.log('🔍 BusinessProfile: Business ID value:', reviewData.businessId);
-      console.log('🔍 BusinessProfile: Using token:', token ? 'Token exists' : 'No token');
-
+      
       const response = await fetch('http://localhost:5000/api/reviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${userToken}`
         },
         body: JSON.stringify(reviewData)
       });
 
-      console.log('🔍 BusinessProfile: Response status:', response.status);
-      console.log('🔍 BusinessProfile: Response headers:', response.headers);
-
       const data = await response.json();
-      console.log('🔍 BusinessProfile: Response data:', data);
 
       if (response.ok || (data && (data._id || data.id || data.reviewId))) {
-        console.log('🔍 BusinessProfile: Review submitted successfully!');
         setReviewSuccess('Review submitted successfully!');
         setReviewForm({
           rating: 5,
@@ -198,9 +162,7 @@ const BusinessProfile = () => {
           setReviewSuccess('');
         }, 3000);
       } else {
-        console.error('🔍 BusinessProfile: API error response:', data);
         if (data && (data._id || data.id || data.reviewId)) {
-          console.log('🔍 BusinessProfile: Review was created despite error response, treating as success');
           setReviewSuccess('Review submitted successfully!');
           setShowReviewForm(false);
           await fetchReviews();
@@ -212,7 +174,6 @@ const BusinessProfile = () => {
         }
       }
     } catch (error) {
-      console.error('🔍 BusinessProfile: Network or other error:', error);
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         setReviewError('Cannot connect to server. Please check if the backend is running.');
       } else {
@@ -223,102 +184,77 @@ const BusinessProfile = () => {
     }
   };
 
-  // Refresh business data to update rating count
+  // rating waghera fresh rakhne k liye business data refresh
   const refreshBusinessData = async () => {
     if (!business?.id) return;
     
     try {
-      console.log('🔍 BusinessProfile: Refreshing business data for ID:', business.id);
       const response = await fetch(`http://localhost:5000/api/business/${business.id}`);
       
       if (response.ok) {
         const businessData = await response.json();
-        console.log('🔍 BusinessProfile: Refreshed business data:', businessData);
         
         if (businessData.business) {
           const normalized = normalizeBusinessData(businessData.business);
-          console.log('🔍 BusinessProfile: Normalized business data:', normalized);
-          console.log('🔍 BusinessProfile: Rating:', normalized.rating, 'Total Reviews:', normalized.totalReviews);
           setBusiness(normalized);
         } else if (businessData) {
           const normalized = normalizeBusinessData(businessData);
-          console.log('🔍 BusinessProfile: Normalized business data (direct):', normalized);
-          console.log('🔍 BusinessProfile: Rating:', normalized.rating, 'Total Reviews:', normalized.totalReviews);
           setBusiness(normalized);
         }
       } else {
-        console.error('🔍 BusinessProfile: Failed to refresh business data:', response.status);
-        const errorText = await response.text();
-        console.error('🔍 BusinessProfile: Error response:', errorText);
+        // refresh fail ho to quietly ignore
+        await response.text();
       }
     } catch (error) {
-      console.error('🔍 BusinessProfile: Error refreshing business data:', error);
+      // refresh error ignore
     }
   };
 
-  // Fetch reviews for this business
+  // is business ki reviews lane k liye
   const fetchReviews = async () => {
-    const targetBusinessId = businessId || business?.id;
+    const targetBusinessId = business?.id;
     
     if (!targetBusinessId) {
-      console.log('🔍 BusinessProfile: No business ID available for fetching reviews');
-      console.log('🔍 BusinessProfile: URL businessId:', businessId);
-      console.log('🔍 BusinessProfile: Business object ID:', business?.id);
       return;
     }
-    
-    console.log('🔍 BusinessProfile: Starting to fetch reviews...');
-    console.log('🔍 BusinessProfile: Using business ID for fetching reviews:', targetBusinessId);
-    console.log('🔍 BusinessProfile: Business data available:', business);
     
     setLoadingReviews(true);
     try {
       let reviews = [];
       
       const url = `http://localhost:5000/api/reviews?businessId=${targetBusinessId}`;
-      console.log('🔍 BusinessProfile: Fetching reviews from URL:', url);
       
       const response = await fetch(url);
-      console.log('🔍 BusinessProfile: Reviews response status:', response.status);
       
       if (response.ok) {
         const reviewsData = await response.json();
-        console.log('🔍 BusinessProfile: Raw reviews data from API:', reviewsData);
         
         if (Array.isArray(reviewsData)) {
           reviews = reviewsData;
-          console.log('🔍 BusinessProfile: Reviews is an array, length:', reviews.length);
         } else if (reviewsData.reviews && Array.isArray(reviewsData.reviews)) {
           reviews = reviewsData.reviews;
-          console.log('🔍 BusinessProfile: Reviews from reviews property, length:', reviews.length);
         } else if (reviewsData.data && Array.isArray(reviewsData.data)) {
           reviews = reviewsData.data;
-          console.log('🔍 BusinessProfile: Reviews from data property, length:', reviews.length);
         } else {
-          console.log('🔍 BusinessProfile: Unexpected reviews data structure:', reviewsData);
+          // reviews data structure unexpected ho to ignore
         }
       } else {
-        console.error('🔍 BusinessProfile: Failed to fetch reviews. Status:', response.status);
-        const errorText = await response.text();
-        console.error('🔍 BusinessProfile: Error response body:', errorText);
+        // status ok na ho to quietly ignore
+        await response.text();
       }
       
       if (reviews.length === 0) {
-        console.log('🔍 BusinessProfile: No reviews found with business ID, trying to fetch all reviews...');
         try {
           const allReviewsResponse = await fetch('http://localhost:5000/api/reviews');
           if (allReviewsResponse.ok) {
             const allReviewsData = await allReviewsResponse.json();
-            console.log('🔍 BusinessProfile: All reviews in database:', allReviewsData);
             
             if (Array.isArray(allReviewsData)) {
               const matchingReviews = allReviewsData.filter(review => {
-                console.log('🔍 BusinessProfile: Checking review:', review);
                 return review.businessId === targetBusinessId || 
                        review.businessId === business?.id ||
-                       review.businessId === businessId;
+                       review.businessId === business?.id;
               });
-              console.log('🔍 BusinessProfile: Matching reviews found:', matchingReviews);
               reviews = matchingReviews;
             }
           }
@@ -328,20 +264,16 @@ const BusinessProfile = () => {
       }
       
       if (reviews.length === 0 && business.reviews && Array.isArray(business.reviews)) {
-        console.log('🔍 BusinessProfile: Using fallback reviews from business data:', business.reviews);
         reviews = business.reviews;
       }
       
-      console.log('🔍 BusinessProfile: Final processed reviews:', reviews);
       setReviews(reviews);
       
     } catch (error) {
-      console.error('🔍 BusinessProfile: Network error fetching reviews:', error);
+      // network error pe local reviews try kr rhy hain
       if (business.reviews && Array.isArray(business.reviews)) {
-        console.log('🔍 BusinessProfile: Using fallback reviews from business data after network error:', business.reviews);
         setReviews(business.reviews);
       } else {
-        console.log('🔍 BusinessProfile: No fallback reviews available after network error, setting empty array');
         setReviews([]);
       }
     } finally {
@@ -349,44 +281,58 @@ const BusinessProfile = () => {
     }
   };
 
-  // Fetch reviews when business data is available
+  // jab business id mile to reviews fetch karo
   useEffect(() => {
     if (business?.id) {
       fetchReviews();
     }
   }, [business?.id]);
 
-  // Auto-refresh business data when reviews change to keep rating count updated
+  // reviews change pe rating updated rakhne k liye refresh
   useEffect(() => {
     if (reviews.length > 0 && business?.id) {
       refreshBusinessData();
     }
   }, [reviews.length]);
 
-  // Search localStorage for business data
-  const searchLocalStorage = (businessId) => {
-    if (!businessId) return null;
-    
+  // localStorage me category aur slug se dhoondne k liye
+  const searchLocalStorageBySlug = (category, slug) => {
+    if (!category || !slug) return null;
+
     const localStorageKeys = ['serviceProviders', 'registeredProviders', 'businesses', 'providers'];
-    
+
     for (const key of localStorageKeys) {
       try {
         const data = localStorage.getItem(key);
         if (data) {
           const parsedData = JSON.parse(data);
-          
+
           if (Array.isArray(parsedData)) {
-            const found = parsedData.find(p => p.id === businessId || p._id === businessId);
+            const found = parsedData.find(p => {
+              const bizSlug = p.businessName
+                ?.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim('-');
+              return bizSlug === slug;
+            });
             if (found) {
-              console.log(`🔍 BusinessProfile: Found business in localStorage.${key}:`, found);
               return found;
             }
           } else if (typeof parsedData === 'object') {
             for (const [categoryId, providers] of Object.entries(parsedData)) {
               if (Array.isArray(providers)) {
-                const found = providers.find(p => p.id === businessId || p._id === businessId);
+                const found = providers.find(p => {
+                  const bizSlug = p.businessName
+                    ?.toLowerCase()
+                    .replace(/[^a-z0-9\s-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/-+/g, '-')
+                    .trim('-');
+                  return bizSlug === slug;
+                });
                 if (found) {
-                  console.log(`🔍 BusinessProfile: Found business in localStorage.${key}.${categoryId}:`, found);
                   return found;
                 }
               }
@@ -394,61 +340,66 @@ const BusinessProfile = () => {
           }
         }
       } catch (e) {
-        console.log(`🔍 BusinessProfile: Error parsing localStorage.${key}:`, e);
+        // localStorage parse error ignore krdo
       }
     }
     
     return null;
   };
 
-  // Fetch business data from API or localStorage
+  // api ya localStorage se business data lane k liye
   useEffect(() => {
     const fetchBusiness = async () => {
       try {
         setLoading(true);
-        console.log('🔍 BusinessProfile: Fetching business data for ID:', businessId);
         
-        const response = await fetch(`http://localhost:5000/api/business/${businessId}`);
-        console.log('🔍 BusinessProfile: API response status:', response.status);
+        // pehle category me slug se business dhoondte hain
+        const response = await fetch(`http://localhost:5000/api/business/type/${category}`);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('🔍 BusinessProfile: API response data:', data);
-          console.log('🔍 BusinessProfile: API response rating structure:', data.business?.rating || data.rating);
           
-          let businessData;
-          if (data.business) {
-            businessData = data.business;
-          } else if (data._id) {
-            businessData = data;
-          } else {
-            throw new Error('Invalid business data structure from API');
+          // category ke andr slug se match krte hain
+          let businessData = null;
+          if (data.businesses && Array.isArray(data.businesses)) {
+            businessData = data.businesses.find(biz => {
+              // business name se slug bna k compare krte hain
+              const bizSlug = biz.businessName
+                ?.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim('-');
+              return bizSlug === businessSlug;
+            });
           }
           
-          console.log('🔍 BusinessProfile: Business data before normalization:', businessData);
-          console.log('🔍 BusinessProfile: Business rating structure:', businessData.rating);
-          
-          const normalized = normalizeBusinessData(businessData);
-          console.log('🔍 BusinessProfile: Normalized business data from API:', normalized);
-          console.log('🔍 BusinessProfile: Rating from API:', normalized.rating, 'Total Reviews:', normalized.totalReviews);
-          setBusiness(normalized);
+          if (businessData) {
+            const normalized = normalizeBusinessData(businessData);
+            setBusiness(normalized);
+          } else {
+            const fallbackData = searchLocalStorageBySlug(category, businessSlug);
+            if (fallbackData) {
+              const normalized = normalizeBusinessData(fallbackData);
+              setBusiness(normalized);
+            } else {
+              setError('Business not found');
+            }
+          }
         } else {
-          console.log('🔍 BusinessProfile: API failed, falling back to localStorage');
-          const fallbackData = searchLocalStorage(businessId);
+          const fallbackData = searchLocalStorageBySlug(category, businessSlug);
           if (fallbackData) {
             const normalized = normalizeBusinessData(fallbackData);
-            console.log('🔍 BusinessProfile: Normalized business data from localStorage:', normalized);
             setBusiness(normalized);
           } else {
             setError('Business not found');
           }
         }
       } catch (error) {
-        console.error('🔍 BusinessProfile: Error fetching business data:', error);
-        const fallbackData = searchLocalStorage(businessId);
+        // business data fetch error pe local fallback try
+        const fallbackData = searchLocalStorageBySlug(category, businessSlug);
         if (fallbackData) {
           const normalized = normalizeBusinessData(fallbackData);
-          console.log('🔍 BusinessProfile: Normalized business data from localStorage fallback:', normalized);
           setBusiness(normalized);
         } else {
           setError('Business not found');
@@ -458,10 +409,10 @@ const BusinessProfile = () => {
       }
     };
 
-    if (businessId) {
+    if (category && businessSlug) {
       fetchBusiness();
     }
-  }, [businessId]);
+  }, [category, businessSlug]);
 
   if (loading) {
     return (
@@ -537,6 +488,28 @@ const BusinessProfile = () => {
         </div>
       ) : (
         <>
+          {/* Success Message */}
+          {inquirySuccess && (
+            <div className="success-message" style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              background: '#4CAF50',
+              color: 'white',
+              padding: '15px 20px',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              zIndex: 1000,
+              maxWidth: '400px',
+              animation: 'slideInRight 0.3s ease-out'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>✅</span>
+                <span>{inquirySuccess}</span>
+              </div>
+            </div>
+          )}
+
           {/* Professional Hero Section */}
           <div className="business-hero">
             <div className="hero-background-pattern"></div>
@@ -544,12 +517,11 @@ const BusinessProfile = () => {
               <div className="profile-section">
                 <div className="profile-picture-container">
                   <div className="profile-picture">
-                    <img 
-                      src={business.profilePicture || business.image || '/default-profile.png'} 
-                      alt={business.businessName || business.name}
-                      onError={(e) => {
-                        e.target.src = '/default-profile.png';
-                      }}
+                    <BusinessAvatar
+                      businessName={business.businessName || business.name}
+                      imageUrl={business.profilePicture || business.image}
+                      size="xlarge"
+                      className="business-profile-avatar"
                     />
                   </div>
                   {business.yearsOfExperience && (
@@ -562,10 +534,17 @@ const BusinessProfile = () => {
                 <div className="business-info">
                   <div className="business-header">
                     <h1>{business.businessName || business.name}</h1>
-                    <div className="verification-badge">
-                      <FaCheckCircle />
-                      <span>Verified Business</span>
-                    </div>
+                    {business.verification?.isVerified ? (
+                      <div className="verification-badge verified">
+                        <FaCheckCircle />
+                        <span>Verified Business</span>
+                      </div>
+                    ) : (
+                      <div className="verification-badge unverified">
+                        <FaRegClock />
+                        <span>Unverified Business</span>
+                      </div>
+                    )}
                   </div>
                   <div className="rating-section">
                     <div className="rating-stars">
@@ -599,8 +578,8 @@ const BusinessProfile = () => {
           </div>
 
           {/* Professional CTA Section */}
-          <div className="cta-section">
-            <div className="cta-header">
+          <div className="cta-section-business-profile">
+            <div className="cta-header-business-profile">
               <h3>Contact & Connect</h3>
               <p>Choose how you'd like to interact with this business</p>
             </div>
@@ -617,6 +596,13 @@ const BusinessProfile = () => {
                   <span className="cta-subtitle">Direct phone contact</span>
                 </div>
               </button>
+              
+              {/* Message Business Button */}
+              <MessageBusinessButton 
+                business={business}
+                className="cta-button cta-message"
+              />
+              
               <button 
                 className="cta-button cta-inquiry"
                 onClick={() => setShowInquiryForm(true)}
@@ -627,6 +613,18 @@ const BusinessProfile = () => {
                 <div className="cta-content">
                   <span className="cta-title">Send Inquiry</span>
                   <span className="cta-subtitle">Request information</span>
+                </div>
+              </button>
+              <button 
+                className="cta-button cta-complaint"
+                onClick={() => setShowComplaintForm(true)}
+              >
+                <div className="cta-icon">
+                  <FaExclamationTriangle />
+                </div>
+                <div className="cta-content">
+                  <span className="cta-title">File a Complaint</span>
+                  <span className="cta-subtitle">Report an issue</span>
                 </div>
               </button>
               <button 
@@ -728,6 +726,33 @@ const BusinessProfile = () => {
                     </div>
                   </div>
                 )}
+
+                {business.additionalServices && business.additionalServices.length > 0 && (
+                  <div className="additional-services-list">
+                    <h4>Additional Services & Pricing</h4>
+                    <div className="additional-services-grid">
+                      {business.additionalServices.map((service, index) => (
+                        <div key={index} className="additional-service-card">
+                          <div className="service-header">
+                            <h5 className="service-title">{service.serviceTitle}</h5>
+                            <div className="service-pricing">
+                              {service.pricing.type === 'fixed' && (
+                                <span className="price">PKR {service.pricing.amount?.toLocaleString()}</span>
+                              )}
+                              {service.pricing.type === 'hourly' && (
+                                <span className="price">PKR {service.pricing.amount?.toLocaleString()} {service.pricing.unit}</span>
+                              )}
+                              {service.pricing.type === 'negotiable' && (
+                                <span className="price negotiable">Price on Request</span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="service-description">{service.serviceDescription}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -750,35 +775,25 @@ const BusinessProfile = () => {
               </div>
             )}
 
-            {(business.coverPhoto || (business.galleryImages && business.galleryImages.length > 0)) && (
+            {business.coverPhotos && business.coverPhotos.length > 0 && (
               <div className="info-card gallery-card">
                 <div className="card-header">
                   <FaRegBuilding className="card-icon" />
-                  <h3>Gallery</h3>
+                  <h3>Photos</h3>
                 </div>
                 <div className="business-gallery">
-                  {business.coverPhoto && (
-                    <div className="cover-photo">
-                      <img src={business.coverPhoto} alt="Cover Photo" />
-                      <div className="image-overlay">
-                        <span className="image-label">Cover Photo</span>
+                  <div className="gallery-images">
+                    {business.coverPhotos.slice(0, 6).map((image, index) => (
+                      <div key={index} className="gallery-image">
+                        <img src={image} alt={`Photo ${index + 1}`} />
                       </div>
-                    </div>
-                  )}
-                  {business.galleryImages && business.galleryImages.length > 0 && (
-                    <div className="gallery-images">
-                      {business.galleryImages.slice(0, 6).map((image, index) => (
-                        <div key={index} className="gallery-image">
-                          <img src={image} alt={`Gallery Image ${index + 1}`} />
-                        </div>
-                      ))}
-                      {business.galleryImages.length > 6 && (
-                        <div className="gallery-more">
-                          <span>+{business.galleryImages.length - 6} more</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    ))}
+                    {business.coverPhotos.length > 6 && (
+                      <div className="gallery-more">
+                        <span>+{business.coverPhotos.length - 6} more</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1115,6 +1130,25 @@ const BusinessProfile = () => {
           onClose={() => setShowInquiryForm(false)}
           onSuccess={handleInquirySuccess}
         />
+      )}
+
+      {/* Complaint Form Modal */}
+      {showComplaintForm && (
+        <>
+          {console.log('🔍 BusinessProfile: Business data for complaint:', {
+            id: business?.id,
+            businessName: business?.businessName,
+            businessType: business?.businessType
+          })}
+          <ComplaintForm
+            isOpen={showComplaintForm}
+            onClose={() => setShowComplaintForm(false)}
+            businessId={business?.id}
+            businessName={business?.businessName}
+            serviceType={business?.businessType}
+            userToken={userToken}
+          />
+        </>
       )}
     </div>
   );

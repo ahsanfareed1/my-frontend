@@ -43,8 +43,6 @@ const BusinessProfileEdit = () => {
           setLoading(false);
           return;
         }
-        
-        // Check if current user is the owner
         if (business.userId !== user?.id) {
           setError('You are not authorized to edit this profile');
           setLoading(false);

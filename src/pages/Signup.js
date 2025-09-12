@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { FaUser, FaEnvelope, FaLock, FaMapMarkerAlt, FaPhone, FaGlobe } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaMapMarkerAlt, FaPhone } from 'react-icons/fa';
 import './Signup.css';
 
 function Signup() {
@@ -13,13 +13,11 @@ function Signup() {
     confirmPassword: '',
     phone: '',
     address: '',
-    city: '',
-    area: '',
-    country: 'Pakistan',
-    postalCode: ''
+    city: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { register } = useContext(AuthContext);
 
   const handleChange = (e) => {
@@ -63,7 +61,7 @@ function Signup() {
           setError('Please fill in phone number, address, and city');
           return false;
         }
-        if (!/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/\s/g, ''))) {
+        if (!/^[\+]?[0-9][\d]{0,15}$/.test(formData.phone.replace(/\s/g, ''))) {
           setError('Please enter a valid phone number');
           return false;
         }
@@ -89,17 +87,17 @@ function Signup() {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsLoading(true);
 
     if (!validateStep(step)) {
+      setIsLoading(false);
       return;
     }
 
     try {
       const locationData = {
         address: formData.address.trim(),
-        city: formData.city.trim(),
-        area: formData.area.trim(),
-        country: formData.country.trim()
+        city: formData.city.trim()
       };
 
       const result = await register({
@@ -113,17 +111,29 @@ function Signup() {
       });
 
       if (result && result.success) {
-        setSuccess('Registration successful! Redirecting...');
+        setSuccess('Account create hogaya, AAA Services mein khush amdeed!');
         setTimeout(() => {
           window.location.href = '/';
         }, 2000);
       } else {
-        const errorMessage = result?.message || 'Registration failed';
-        setError(errorMessage);
+        const errorMessage = result?.message || result?.error || 'Registration failed';
+        
+        // Handle specific error cases
+        if (errorMessage.includes('Email already registered')) {
+          setError('This email is already registered. Please use a different email or try logging in.');
+        } else if (errorMessage.includes('Username already taken')) {
+          setError('This username is already taken. Please choose a different username.');
+        } else if (errorMessage.includes('Validation failed')) {
+          setError('Please check all fields and try again.');
+        } else {
+          setError(errorMessage);
+        }
+        setIsLoading(false);
       }
     } catch (err) {
-      console.error('Error during registration:', err);
+      // registration ke doran error aya to message dikha dein
       setError('An error occurred during registration. Please try again.');
+      setIsLoading(false);
     }
   };
 
@@ -134,7 +144,6 @@ function Signup() {
           <div className="form-step">
             <h3 className="step-title">Personal Information</h3>
             
-            {/* First Name and Last Name - Two columns when space allows */}
             <div className="form-row">
               <div className="form-group">
                 <label>
@@ -172,7 +181,6 @@ function Signup() {
           <div className="form-step">
             <h3 className="step-title">Account Details</h3>
             
-            {/* Email - Full Width */}
             <div className="form-group">
               <label>
                 <FaEnvelope className="input-icon" />
@@ -188,7 +196,6 @@ function Signup() {
               />
             </div>
             
-            {/* Password and Confirm Password - Two columns when space allows */}
             <div className="form-row">
               <div className="form-group">
                 <label>
@@ -228,7 +235,6 @@ function Signup() {
           <div className="form-step">
             <h3 className="step-title">Contact & Location</h3>
             
-            {/* Phone Number - Full Width */}
             <div className="form-group">
               <label>
                 <FaPhone className="input-icon" />
@@ -239,12 +245,11 @@ function Signup() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="Enter your phone number"
+                placeholder="+923001234567"
                 required
               />
             </div>
             
-            {/* Address - Full Width */}
             <div className="form-group">
               <label>
                 <FaMapMarkerAlt className="input-icon" />
@@ -260,72 +265,19 @@ function Signup() {
               />
             </div>
             
-            {/* City and Area - Two columns when space allows */}
-            <div className="form-row">
-              <div className="form-group">
-                <label>
-                  <FaMapMarkerAlt className="input-icon" />
-                  City *
-                </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="Enter your city"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>
-                  <FaMapMarkerAlt className="input-icon" />
-                  Area/Neighborhood
-                </label>
-                <input
-                  type="text"
-                  name="area"
-                  value={formData.area}
-                  onChange={handleChange}
-                  placeholder="Enter your area"
-                />
-              </div>
-            </div>
-            
-            {/* Country and Postal Code - Two columns when space allows */}
-            <div className="form-row">
-              <div className="form-group">
-                <label>
-                  <FaGlobe className="input-icon" />
-                  Country
-                </label>
-                <select
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                >
-                  <option value="Pakistan">Pakistan</option>
-                  <option value="United States">United States</option>
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="Canada">Canada</option>
-                  <option value="Australia">Australia</option>
-                  <option value="Germany">Germany</option>
-                  <option value="France">France</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>
-                  <FaMapMarkerAlt className="input-icon" />
-                  Postal Code
-                </label>
-                <input
-                  type="text"
-                  name="postalCode"
-                  value={formData.postalCode}
-                  onChange={handleChange}
-                  placeholder="Enter postal code"
-                />
-              </div>
+            <div className="form-group">
+              <label>
+                <FaMapMarkerAlt className="input-icon" />
+                City *
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="Enter your city"
+                required
+              />
             </div>
           </div>
         );
@@ -358,8 +310,25 @@ function Signup() {
           </div>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message">
+            {error}
+            {error.includes('email is already registered') && (
+              <div style={{ marginTop: '10px' }}>
+                <a href="/login" className="login-redirect-link">
+                  Click here to login instead
+                </a>
+              </div>
+            )}
+          </div>
+        )}
         {success && <div className="success-message">{success}</div>}
+        {isLoading && (
+          <div className="loading-indicator">
+            <div className="loading-bar"></div>
+            <p>Creating your account...</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="signup-form">
           {renderStep()}
@@ -383,8 +352,19 @@ function Signup() {
                 Next →
               </button>
             ) : (
-              <button type="submit" className="submit-button">
-                Create Account
+              <button 
+                type="submit" 
+                className="submit-button"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    Creating Account...
+                  </>
+                ) : (
+                  'Create Account'
+                )}
               </button>
             )}
           </div>
