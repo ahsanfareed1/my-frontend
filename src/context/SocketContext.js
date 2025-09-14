@@ -2,6 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL
+  || (process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/api\/?$/, '') : 'http://localhost:5000');
+
 const SocketContext = createContext();
 
 export const useSocket = () => {
@@ -32,7 +35,7 @@ export const SocketProvider = ({ children }) => {
     if (!token) return;
 
     // Create socket connection
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io(SOCKET_URL, {
       auth: {
         token: token
       },
@@ -41,24 +44,22 @@ export const SocketProvider = ({ children }) => {
 
     // Connection events
     newSocket.on('connect', () => {
-      console.log('🔌 Socket connected:', newSocket.id);
       setIsConnected(true);
       setConnectionError(null);
     });
 
-    newSocket.on('disconnect', (reason) => {
-      console.log('🔌 Socket disconnected:', reason);
+    newSocket.on('disconnect', () => {
       setIsConnected(false);
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error);
+      console.error('Socket connection error:', error);
       setConnectionError(error.message);
       setIsConnected(false);
     });
 
     newSocket.on('error', (error) => {
-      console.error('❌ Socket error:', error);
+      console.error('Socket error:', error);
       setConnectionError(error.message);
     });
 
@@ -73,7 +74,7 @@ export const SocketProvider = ({ children }) => {
   // Socket functions
   const sendMessage = (messageData) => {
     if (!socket || !isConnected) {
-      console.error('❌ Socket not connected');
+      console.error('Socket not connected');
       return false;
     }
 
@@ -81,7 +82,7 @@ export const SocketProvider = ({ children }) => {
       socket.emit('send-message', messageData);
       return true;
     } catch (error) {
-      console.error('❌ Error sending message:', error);
+      console.error('Error sending message:', error);
       return false;
     }
   };
@@ -92,7 +93,7 @@ export const SocketProvider = ({ children }) => {
     try {
       socket.emit('typing-start', typingData);
     } catch (error) {
-      console.error('❌ Error starting typing:', error);
+      console.error('Error starting typing:', error);
     }
   };
 
@@ -102,7 +103,7 @@ export const SocketProvider = ({ children }) => {
     try {
       socket.emit('typing-stop', typingData);
     } catch (error) {
-      console.error('❌ Error stopping typing:', error);
+      console.error('Error stopping typing:', error);
     }
   };
 
@@ -112,7 +113,7 @@ export const SocketProvider = ({ children }) => {
     try {
       socket.emit('mark-read', { messageId, conversationId });
     } catch (error) {
-      console.error('❌ Error marking message as read:', error);
+      console.error('Error marking message as read:', error);
     }
   };
 
@@ -122,7 +123,7 @@ export const SocketProvider = ({ children }) => {
     try {
       socket.emit('join-business', businessId);
     } catch (error) {
-      console.error('❌ Error joining business room:', error);
+      console.error('Error joining business room:', error);
     }
   };
 
@@ -132,7 +133,7 @@ export const SocketProvider = ({ children }) => {
     try {
       socket.emit('delete-message', { messageId, conversationId });
     } catch (error) {
-      console.error('❌ Error deleting message:', error);
+      console.error('Error deleting message:', error);
     }
   };
 
