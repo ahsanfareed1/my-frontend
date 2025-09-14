@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 export const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -23,39 +25,31 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
+    axios.defaults.baseURL = API_BASE_URL;
   }, []);
 
   // Check authentication on page reload
   useEffect(() => {
     const checkAuth = async () => {
-      console.log('🔐 AuthContext: Checking authentication...');
       const token = localStorage.getItem('token');
-      console.log('🔐 AuthContext: Token found:', token ? 'Yes' : 'No');
       
       if (token) {
         try {
-          console.log('🔐 AuthContext: Fetching user profile...');
-          const response = await axios.get('http://localhost:5000/api/users/profile', {
+          const response = await axios.get('/users/profile', {
             headers: { Authorization: `Bearer ${token}` }
           });
           const currentUser = response.data.user;
-          console.log('🔐 AuthContext: User profile fetched:', currentUser);
           
           setUser(currentUser);
           setIsAuthenticated(true);
           setUserType(currentUser.userType || 'customer');
-          
-          console.log('🔐 AuthContext: Authentication state updated');
         } catch (error) {
-          console.log('🔐 AuthContext: Token invalid, clearing auth state');
           localStorage.removeItem('token');
           delete axios.defaults.headers.common['Authorization'];
           setIsAuthenticated(false);
           setUser(null);
           setUserType(null);
         }
-      } else {
-        console.log('🔐 AuthContext: No token found');
       }
       setLoading(false);
     };
@@ -66,7 +60,7 @@ export const AuthProvider = ({ children }) => {
   // Register user
   const register = async (userData) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', userData);
+      const response = await axios.post('/auth/register', userData);
       
       const { user: registeredUser, token } = response.data;
       
@@ -91,26 +85,19 @@ export const AuthProvider = ({ children }) => {
   // Login user
   const login = async (email, password) => {
     try {
-      console.log('🔐 AuthContext: Attempting login for:', email);
-      const response = await axios.post('http://localhost:5000/api/auth/login', { email, password });
-      
-      console.log('🔐 AuthContext: Login response:', response.data);
+      const response = await axios.post('/auth/login', { email, password });
       const { user: loggedInUser, token } = response.data;
       
       // Store token
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      console.log('🔐 AuthContext: Setting user state:', loggedInUser);
       setUser(loggedInUser);
       setUserType(loggedInUser.userType || 'customer');
       setIsAuthenticated(true);
-      
-      console.log('🔐 AuthContext: User state updated, isAuthenticated:', true);
 
       return { success: true, user: loggedInUser };
     } catch (error) {
-      console.error('🔐 AuthContext: Login error details:', {
+      console.error('Login error:', {
         status: error.response?.status,
         message: error.response?.data?.message,
         error: error.message
@@ -159,25 +146,19 @@ export const AuthProvider = ({ children }) => {
 
   // Update user profile
   const updateProfile = async (profileData) => {
-    console.log('🔍 Frontend: Calling updateProfile API');
-    console.log('🔍 Frontend: URL:', 'http://localhost:5000/api/users/profile');
-    console.log('🔍 Frontend: Profile data:', profileData);
-    console.log('🔍 Frontend: Token present:', !!localStorage.getItem('token'));
-    
     try {
-      const response = await axios.put('http://localhost:5000/api/users/profile', profileData, {
+      const response = await axios.put('/users/profile', profileData, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      
-      console.log('✅ Frontend: Profile update successful:', response.data);
-      
       const updatedUser = response.data.user;
       setUser(updatedUser);
       return { success: true, user: updatedUser };
     } catch (error) {
-      console.error('❌ Frontend: Profile update error:', error);
-      console.error('❌ Frontend: Error response:', error.response?.data);
-      console.error('❌ Frontend: Error status:', error.response?.status);
+      console.error('Profile update error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       return {
         success: false,
@@ -188,25 +169,20 @@ export const AuthProvider = ({ children }) => {
 
   // Update user profile picture
   const updateProfilePicture = async (profilePicture) => {
-    console.log('🔍 Frontend: Calling updateProfilePicture API');
-    console.log('🔍 Frontend: URL:', 'http://localhost:5000/api/users/profile-picture');
-    console.log('🔍 Frontend: Token present:', !!localStorage.getItem('token'));
-    
     try {
-      const response = await axios.put('http://localhost:5000/api/users/profile-picture', 
+      const response = await axios.put('/users/profile-picture', 
         { profilePicture }, 
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
-      
-      console.log('✅ Frontend: Profile picture update successful:', response.data);
-      
       const updatedUser = response.data.user;
       setUser(updatedUser);
       return { success: true, user: updatedUser };
     } catch (error) {
-      console.error('❌ Frontend: Profile picture update error:', error);
-      console.error('❌ Frontend: Error response:', error.response?.data);
-      console.error('❌ Frontend: Error status:', error.response?.status);
+      console.error('Profile picture update error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       return {
         success: false,
